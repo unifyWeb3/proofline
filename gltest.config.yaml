@@ -1,0 +1,27 @@
+# Current genlayer-test configuration shape. Direct-mode tests do not contact
+# these endpoints; the entries are available for a future Studio/integration
+# lane after the hosted-write gate is approved.
+networks:
+  default: localnet
+
+  localnet:
+    url: http://127.0.0.1:4000/api
+    leader_only: false
+
+  studionet:
+    url: https://studio.genlayer.com/api
+    leader_only: false
+
+  testnet_asimov:
+    url: https://rpc-asimov.genlayer.com
+    leader_only: false
+
+  testnet_bradbury:
+    url: https://rpc-bradbury.genlayer.com
+    leader_only: false
+
+paths:
+  contracts: contracts
+  artifacts: artifacts
+
+environment: .env

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Proofline</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <p class="eyebrow">Proofline · Studio Next</p>
+        <h1>Verify an evidence decision.</h1>
+        <p class="lede">Register a job, submit its evidence, then wait for a finalized GenLayer decision and verified receipt.</p>
+        <div id="network" class="network">Connecting to the local Proofline API…</div>
+      </header>
+
+      <section class="card">
+        <div class="step-heading"><span>1</span><div><h2>Register job</h2><p>The connected wallet authorizes the owner transaction.</p></div></div>
+        <div class="grid two">
+          <label>Job ID<input id="job-id" placeholder="fresh unique job id"><small>Plain identifier: 1–64 characters; start with a letter or number; then use letters, numbers, dot, underscore, or hyphen.</small></label>
+          <label>Policy JSON<textarea id="policy" spellcheck="false" placeholder="Connect the wallet to load the known-good policy shape."></textarea></label>
+        </div>
+        <label>Agreement JSON<textarea id="agreement" spellcheck="false" placeholder="Connect the wallet to load the known-good agreement shape."></textarea></label>
+        <p class="field-help">Policy and Agreement are contract registration objects. Evidence belongs only in the Evidence content field below. Connecting the wallet loads the successful Milestone 2 semantic fixture shape with the current job ID, wallet address, and future deadline.</p>
+        <details class="template-help">
+          <summary>Known-good Milestone 2 JSON shapes</summary>
+          <p>These are the exact schemas used by the hosted semantic ACCEPT fixture. The wallet connection fills fresh identity and deadline values; do not paste evidence JSON into Policy or Agreement.</p>
+          <pre>{
+  "schema_version": "proofline.policy.v1",
+  "policy_version": "acceptance-policy.v1",
+  "agreement_id": "job-pass",
+  "deadline": 1789887377,
+  "signer_address": "0x3211d1419709682b81c53CC51cb63622E25488d3",
+  "required_artifacts": ["response"],
+  "deterministic_requirements": {"max_evidence_age_seconds": 7200, "require_snapshot": true},
+  "subjective_criterion": {
+    "id": "quality",
+    "statement": "The response must clearly answer the requested report question with actionable evidence.",
+    "allowed_verdicts": ["ACCEPT", "REJECT", "UNDETERMINED"]
+  },
+  "evidence_allowlist": ["embedded://evidence"]
+}</pre>
+          <pre>{
+  "schema_version": "proofline.agreement.v1",
+  "agreement_id": "job-pass",
+  "policy_version": "acceptance-policy.v1",
+  "parties": {"buyer": "buyer-fixture", "worker": "worker-fixture"},
+  "agreement_digest": "sha256:5cb834ec078157ddf160f072368ba765b8f5fdad3e317c8fb03cba606d11d0ad"
+}</pre>
+        </details>
+        <button id="connect">Connect wallet</button>
+        <button id="register" disabled>Register through wallet</button>
+        <div id="register-state" class="state muted">Awaiting wallet connection</div>
+      </section>
+
+      <section class="card">
+        <div class="step-heading"><span>2</span><div><h2>Submit evidence</h2><p>Submission data is sent through the existing <code>submit_job</code> contract path.</p></div></div>
+        <label>Evidence content<textarea id="evidence-content" spellcheck="false" placeholder="Connect the wallet to load the genuine request/response fixture."></textarea></label>
+        <details class="template-help">
+          <summary>Known-good evidence JSON shape</summary>
+          <pre>{
+  "job_id": "job-pass",
+  "request": {
+    "method": "POST",
+    "path": "/v1/report",
+    "body": {"question": "What failed and how should it be fixed?"}
+  },
+  "response": {
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+      "answer": "The report identifies the root cause, cites the observed failure, and gives a concrete remediation.",
+      "evidence": ["fixture-log-001", "fixture-test-001"]
+    }
+  }
+}</pre>
+        </details>
+        <button id="build-envelope">Build matching envelope</button>
+        <div id="envelope-state" class="state muted">The envelope is generated from the evidence; no digest is entered manually.</div>
+        <label>Generated envelope JSON<textarea id="envelope" spellcheck="false" readonly placeholder="Build the envelope after entering evidence."></textarea></label>
+        <button id="submit" disabled>Submit through wallet</button>
+        <div id="submit-state" class="state muted">Register the job before submitting.</div>
+      </section>
+
+      <section class="card">
+        <div class="step-heading"><span>3</span><div><h2>Observe final result</h2><p>Only authoritative finalized readback can produce a receipt.</p></div></div>
+        <div id="lifecycle" class="state muted">No submission transaction observed.</div>
+        <div id="receipt-status" class="state muted">Receipt verification: PENDING</div>
+        <div id="result" class="result hidden"></div>
+        <details id="receipt-panel" class="hidden">
+          <summary>Structured verified receipt JSON</summary>
+          <pre id="receipt-json"></pre>
+          <button id="download-receipt" type="button">Download sanitized receipt JSON</button>
+        </details>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

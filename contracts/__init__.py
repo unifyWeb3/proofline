@@ -1,0 +1,1 @@
+"""GenLayer Intelligent Contract entrypoints."""

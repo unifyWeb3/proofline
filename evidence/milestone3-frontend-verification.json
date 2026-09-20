@@ -1,0 +1,163 @@
+{
+  "browser_run": {
+    "canonical_envelope_digest": "sha256:0cd5637e47e217f0b99696f3675d255bf4fdefe8429bc4ffa3b3bfcb0211db91",
+    "chain_id": 61997,
+    "contract_address": "0x6eb8E208666694e9948E87aa46294aA349fD2014",
+    "final_state": {
+      "consensus": "MAJORITY_AGREE",
+      "decision_digest": "sha256:51c34bc82c2c83c9eda4979aaa8c252fab654d05dee67be4beb22a2a609d4e9a",
+      "execution": "FINISHED_WITH_RETURN",
+      "finalized_at": 1789907391,
+      "lifecycle": "finalized",
+      "producing_transaction": "0xa34586931cebe63f1392c3ea0233a21e406940d12157b78bc3ecec976be50c78",
+      "protocol_state": "FINALIZED",
+      "reason_code": "CRITERION_MET",
+      "verdict": "ACCEPT"
+    },
+    "injected_wallet_connected": true,
+    "job_id": "browser-1789906301756",
+    "lifecycle_states_independently_confirmed": [
+      "FINALIZED"
+    ],
+    "lifecycle_states_reported": [
+      "submitted",
+      "finalized"
+    ],
+    "registration_transaction": "0xcec697ccc66ed244a45c8156c4a29f1ead05c399d389609ad1d61a7df96bb491",
+    "rpc_url": "https://studio-dev.genlayer.com/api",
+    "submission_transaction": "0xa34586931cebe63f1392c3ea0233a21e406940d12157b78bc3ecec976be50c78",
+    "wallet_authorized_registration": true,
+    "wallet_authorized_submission": true
+  },
+  "frontend_implementation": {
+    "canonical_envelope_builder": true,
+    "downloadable_receipt": true,
+    "placeholder_digest_removed": true,
+    "receipt_statuses": [
+      "PASSED",
+      "FAILED",
+      "PENDING"
+    ],
+    "structured_receipt_json": true,
+    "wallet_signing_path": "window.ethereum eth_sendTransaction"
+  },
+  "independent_verification": {
+    "all_required_comparisons_passed": true,
+    "decision_digest_matches_authoritative_readback": true,
+    "decision_digest_recomputed": "sha256:51c34bc82c2c83c9eda4979aaa8c252fab654d05dee67be4beb22a2a609d4e9a",
+    "finalized_at": 1789907391,
+    "finalized_at_source": "submission transaction consensus_history.current_monitoring.FINALIZED",
+    "job_id_matches_registration_and_submission": true,
+    "latest_final_readback": {
+      "decision": {
+        "adapter_signal": "RELEASE_READY",
+        "adjudication_mode": "SEMANTIC",
+        "agreement_digest": "sha256:08fdf7a42bd3acd47e986aba059ef519c41d2112508a8b1e7a4947576d318278",
+        "agreement_id": "browser-1789906301756",
+        "chain_id": 61997,
+        "contract_address": "0x6eb8E208666694e9948E87aa46294aA349fD2014",
+        "decision_digest": "sha256:51c34bc82c2c83c9eda4979aaa8c252fab654d05dee67be4beb22a2a609d4e9a",
+        "deterministic_result": {
+          "checks": {
+            "agreement_digest": true,
+            "all_deterministic": true,
+            "policy_digest": true,
+            "schema": true,
+            "transaction_sender": true
+          },
+          "evaluation_invoked": true,
+          "evidence_digest": "sha256:0cd5637e47e217f0b99696f3675d255bf4fdefe8429bc4ffa3b3bfcb0211db91",
+          "mode": "CONTRACT",
+          "passed": true,
+          "reason_code": "DETERMINISTIC_VALID"
+        },
+        "evaluation_invoked": true,
+        "evidence_digest": "sha256:0cd5637e47e217f0b99696f3675d255bf4fdefe8429bc4ffa3b3bfcb0211db91",
+        "network": "genlayer",
+        "policy_digest": "sha256:2af7181bd5826546057127def8dc7d6a7b03d71b910d979aabefaad4d5b5e188",
+        "policy_version": "acceptance-policy.v1",
+        "reason_code": "CRITERION_MET",
+        "schema_version": "proofline.decision.v1",
+        "verdict": "ACCEPT"
+      },
+      "job_id": "browser-1789906301756",
+      "read_variant": "latest-final"
+    },
+    "local_adapter": {
+      "agreement_id": "browser-1789906301756",
+      "applied": true,
+      "receipt_digest": "sha256:54f7bf52f64f150584c1fcf1eda0e63198bbbcbd495e7255eb9d7661a2ad78f9",
+      "schema_version": "proofline.adapter-signal.v1",
+      "signal": "RELEASE_READY",
+      "verdict": "ACCEPT"
+    },
+    "receipt_provenance": {
+      "contract_address": "0x6eb8E208666694e9948E87aa46294aA349fD2014",
+      "decision_digest": "sha256:51c34bc82c2c83c9eda4979aaa8c252fab654d05dee67be4beb22a2a609d4e9a",
+      "job_id": "browser-1789906301756",
+      "receipt_digest": "sha256:54f7bf52f64f150584c1fcf1eda0e63198bbbcbd495e7255eb9d7661a2ad78f9",
+      "transaction_reference": "0xa34586931cebe63f1392c3ea0233a21e406940d12157b78bc3ecec976be50c78",
+      "verified": true
+    },
+    "receipt_verification": "PASSED",
+    "registration": {
+      "appeal_status": null,
+      "consensus_result": "MAJORITY_AGREE",
+      "decoded_method": "register_job",
+      "execution_result": "FINISHED_WITH_RETURN",
+      "finality_observed": true,
+      "finalized": true,
+      "finalized_at": 1789906565,
+      "job_id_arg": "browser-1789906301756",
+      "protocol_state": "FINALIZED",
+      "recipient": "0x6eb8E208666694e9948E87aa46294aA349fD2014",
+      "transaction_hash": "0xcec697ccc66ed244a45c8156c4a29f1ead05c399d389609ad1d61a7df96bb491"
+    },
+    "submission": {
+      "appeal_status": null,
+      "authoritative_finalized_at": 1789907391,
+      "consensus_result": "MAJORITY_AGREE",
+      "decoded_method": "submit_job",
+      "effect_decision_digests": [
+        "sha256:51c34bc82c2c83c9eda4979aaa8c252fab654d05dee67be4beb22a2a609d4e9a",
+        "sha256:51c34bc82c2c83c9eda4979aaa8c252fab654d05dee67be4beb22a2a609d4e9a"
+      ],
+      "effect_job_ids": [
+        "browser-1789906301756",
+        "browser-1789906301756"
+      ],
+      "execution_result": "FINISHED_WITH_RETURN",
+      "finality_observed": true,
+      "finalized": true,
+      "job_id_arg": "browser-1789906301756",
+      "protocol_state": "FINALIZED",
+      "recipient": "0x6eb8E208666694e9948E87aa46294aA349fD2014",
+      "transaction_hash": "0xa34586931cebe63f1392c3ea0233a21e406940d12157b78bc3ecec976be50c78"
+    },
+    "submission_effect_matches_readback": true
+  },
+  "limitations": [
+    "This is one fresh browser/provider run on Studio Next chain 61997.",
+    "Studio Next is a development preview and may reset or change availability.",
+    "No mainnet, custody, payments, settlement, or release hardening is claimed.",
+    "Intermediate pending/evaluating/consensus states were not independently time-sampled; the browser reported submitted then finalized.",
+    "Wallet authorization is evidenced by the browser run report and the resulting finalized transactions; signing material is not recorded."
+  ],
+  "milestone": "Milestone 3",
+  "schema_version": "proofline.milestone3.frontend-verification.v2",
+  "status": "COMPLETE",
+  "tests": {
+    "compileall": "passed",
+    "direct": "35 passed",
+    "frontend_security_scan": "passed (3 focused tests; full unit suite also passed)",
+    "javascript_syntax": "passed (Node v22.23.2)",
+    "pip_check": "passed",
+    "unit": "48 passed"
+  },
+  "verification_basis": {
+    "browser_run_reported_by_user": true,
+    "historical_previous_evidence_preserved_at": "evidence/historical/milestone3-frontend-verification-incomplete.json",
+    "historical_previous_evidence_status": "INCOMPLETE",
+    "independent_studio_next_readback": "state/milestone3-browser-independent-verification.json"
+  }
+}

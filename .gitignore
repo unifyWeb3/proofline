@@ -1,0 +1,30 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+.env:*
+.private-evidence/
+
+# Python environments and generated caches
+.venv*/
+.genvm-cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.coverage.*
+coverage/
+artifacts/
+
+# Runtime and generated output
+*.log
+state/*.log
+.vercel/
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

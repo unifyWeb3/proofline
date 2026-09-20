@@ -1,0 +1,135 @@
+{
+  "artifact_type": "proofline.milestone3.fee-preflight.v1",
+  "corrected_path": {
+    "profile_source": "evidence/fee-profile-milestone2-correction.json",
+    "returned_fields_used_unchanged": [
+      "distribution",
+      "feeValue"
+    ],
+    "sdk_method": "GenLayerClient.estimate_transaction_fees(options=measured_profile_options)",
+    "sdk_policy_source": "sim_getFeeConfig on official Studio-dev RC chain definition",
+    "wallet_boundary": "server returns unsigned transaction; browser alone calls eth_sendTransaction after explicit wallet authorization"
+  },
+  "incorrect_path": {
+    "backend_before": "GenLayerClient.estimate_transaction_fees_for_write",
+    "frontend_browser": "fetch POST /api/prepare-register or /api/prepare-submit; no fee SDK call",
+    "observed_error": "Fee policy estimation is not supported on this chain (missing fee_manager_contract and sim_getFeeConfig).",
+    "root_cause": "the target-write path masked any runtime fee-policy RPC failure as missing chain support; the frontend path also ignored the measured fee profile",
+    "sdk_internal_before": "get_current_fee_policy -> chain FeeManager or sim_getFeeConfig -> sim_estimateTransactionFees/sim_call"
+  },
+  "network": {
+    "chain_id": 61997,
+    "consensus_main_contract": "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+    "fee_manager_contract": null,
+    "network_name": "GenLayer Studio Devnet",
+    "network_object": "genlayer_py.chains.studio_devnet.studio_devnet",
+    "proofline_contract": "0x6eb8E208666694e9948E87aa46294aA349fD2014",
+    "rpc_probes": {
+      "eth_chainId": "0xf22d",
+      "sim_getFeeConfig": "supported"
+    },
+    "rpc_url": "https://studio-dev.genlayer.com/api"
+  },
+  "observed_at": "2026-09-20T11:59:20.598945Z",
+  "quotes": {
+    "register_job": {
+      "distribution": {
+        "appealRounds": 0,
+        "executionBudgetPerRound": 98285000000000,
+        "executionConsumed": 0,
+        "leaderTimeunitsAllocation": 125,
+        "maxPriceGenPerTimeUnit": 2,
+        "receiptFeeMaxGasPrice": 300000000,
+        "rotations": [
+          3
+        ],
+        "storageFeeMaxGasPrice": 300000000,
+        "totalMessageFees": 0,
+        "validatorTimeunitsAllocation": 250
+      },
+      "feeValue": 393140000012941,
+      "gas": "0x7a120",
+      "profile_options": {
+        "executionBudgetPerRound": 98285000000000,
+        "leaderTimeunitsAllocation": 125,
+        "rotations": [
+          3
+        ],
+        "totalMessageFees": 0,
+        "validatorTimeunitsAllocation": 250
+      }
+    },
+    "submit_job": {
+      "distribution": {
+        "appealRounds": 0,
+        "executionBudgetPerRound": 299000000000000,
+        "executionConsumed": 0,
+        "leaderTimeunitsAllocation": 125,
+        "maxPriceGenPerTimeUnit": 2,
+        "receiptFeeMaxGasPrice": 300000000,
+        "rotations": [
+          3
+        ],
+        "storageFeeMaxGasPrice": 300000000,
+        "totalMessageFees": 0,
+        "validatorTimeunitsAllocation": 250
+      },
+      "feeValue": 1196000000012941,
+      "gas": "0x7a120",
+      "profile_options": {
+        "executionBudgetPerRound": 299000000000000,
+        "leaderTimeunitsAllocation": 125,
+        "rotations": [
+          3
+        ],
+        "totalMessageFees": 0,
+        "validatorTimeunitsAllocation": 250
+      }
+    }
+  },
+  "status": "fee preparation corrected; stop before wallet authorization/broadcast",
+  "toolchain_before_and_after": {
+    "eth_account": {
+      "after": "0.13.7",
+      "before": "0.13.7"
+    },
+    "genlayer_py": {
+      "after": "0.19.0rc2",
+      "before": "0.19.0rc2"
+    },
+    "genlayer_test": {
+      "after": "0.30.0rc2",
+      "before": "0.30.0rc2"
+    },
+    "genvm_linter": {
+      "after": "0.11.1rc2",
+      "before": "0.11.1rc2"
+    },
+    "global_cli": {
+      "after": "0.37.1",
+      "before": "0.37.1",
+      "used_by_frontend_path": false
+    },
+    "global_cli_bundled_genlayer_js": {
+      "after": "0.23.1",
+      "before": "0.23.1",
+      "used_by_frontend_path": false
+    },
+    "matching_python_rc_used_by_frontend": true,
+    "package_upgrade": false,
+    "web3": {
+      "after": "7.16.0",
+      "before": "7.16.0"
+    }
+  },
+  "verification": {
+    "compileall": "passed",
+    "direct_tests": "35 passed",
+    "frontend_security_scan": "passed",
+    "javascript_syntax": "passed",
+    "no_missing_fee_manager_error_in_read_only_quotes": true,
+    "pip_check": "passed",
+    "unit_tests": "48 passed"
+  },
+  "wallet_transactions_broadcast": false
+}

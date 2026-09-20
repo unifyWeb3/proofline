@@ -1,0 +1,143 @@
+{
+  "adapter": {
+    "agreement_id": "browser-1789906301756",
+    "applied": true,
+    "receipt_digest": "sha256:54f7bf52f64f150584c1fcf1eda0e63198bbbcbd495e7255eb9d7661a2ad78f9",
+    "schema_version": "proofline.adapter-signal.v1",
+    "signal": "RELEASE_READY",
+    "verdict": "ACCEPT"
+  },
+  "chain_id": 61997,
+  "comparisons": {
+    "adapter_digest_expected": true,
+    "adapter_release_ready": true,
+    "chain": true,
+    "contract_registration": true,
+    "contract_submission": true,
+    "decision_digest_expected": true,
+    "effect_matches_readback": true,
+    "execution_finished_with_return": true,
+    "protocol_finalized": true,
+    "reason_criterion_met": true,
+    "receipt_digest_expected": true,
+    "receipt_finalized_at_authoritative": true,
+    "receipt_transaction_expected": true,
+    "receipt_verification": true,
+    "registration_finalized": true,
+    "registration_method_job": true,
+    "semantic_accept": true,
+    "submission_finalized": true,
+    "submission_method_job": true
+  },
+  "contract_address": "0x6eb8E208666694e9948E87aa46294aA349fD2014",
+  "decision_digest_recomputed": "sha256:51c34bc82c2c83c9eda4979aaa8c252fab654d05dee67be4beb22a2a609d4e9a",
+  "expected_envelope_digest": "sha256:0cd5637e47e217f0b99696f3675d255bf4fdefe8429bc4ffa3b3bfcb0211db91",
+  "latest_final": {
+    "decision": {
+      "adapter_signal": "RELEASE_READY",
+      "adjudication_mode": "SEMANTIC",
+      "agreement_digest": "sha256:08fdf7a42bd3acd47e986aba059ef519c41d2112508a8b1e7a4947576d318278",
+      "agreement_id": "browser-1789906301756",
+      "chain_id": 61997,
+      "contract_address": "0x6eb8E208666694e9948E87aa46294aA349fD2014",
+      "decision_digest": "sha256:51c34bc82c2c83c9eda4979aaa8c252fab654d05dee67be4beb22a2a609d4e9a",
+      "deterministic_result": {
+        "checks": {
+          "agreement_digest": true,
+          "all_deterministic": true,
+          "policy_digest": true,
+          "schema": true,
+          "transaction_sender": true
+        },
+        "evaluation_invoked": true,
+        "evidence_digest": "sha256:0cd5637e47e217f0b99696f3675d255bf4fdefe8429bc4ffa3b3bfcb0211db91",
+        "mode": "CONTRACT",
+        "passed": true,
+        "reason_code": "DETERMINISTIC_VALID"
+      },
+      "evaluation_invoked": true,
+      "evidence_digest": "sha256:0cd5637e47e217f0b99696f3675d255bf4fdefe8429bc4ffa3b3bfcb0211db91",
+      "network": "genlayer",
+      "policy_digest": "sha256:2af7181bd5826546057127def8dc7d6a7b03d71b910d979aabefaad4d5b5e188",
+      "policy_version": "acceptance-policy.v1",
+      "reason_code": "CRITERION_MET",
+      "schema_version": "proofline.decision.v1",
+      "verdict": "ACCEPT"
+    },
+    "job_id": "browser-1789906301756",
+    "read_variant": "latest-final"
+  },
+  "receipt": {
+    "adapter_signal": "RELEASE_READY",
+    "adjudication_mode": "SEMANTIC",
+    "agreement_digest": "sha256:08fdf7a42bd3acd47e986aba059ef519c41d2112508a8b1e7a4947576d318278",
+    "agreement_id": "browser-1789906301756",
+    "chain_id": 61997,
+    "contract_address": "0x6eb8E208666694e9948E87aa46294aA349fD2014",
+    "decision_digest": "sha256:51c34bc82c2c83c9eda4979aaa8c252fab654d05dee67be4beb22a2a609d4e9a",
+    "deterministic_result": {
+      "checks": {
+        "agreement_digest": true,
+        "all_deterministic": true,
+        "policy_digest": true,
+        "schema": true,
+        "transaction_sender": true
+      },
+      "evaluation_invoked": true,
+      "evidence_digest": "sha256:0cd5637e47e217f0b99696f3675d255bf4fdefe8429bc4ffa3b3bfcb0211db91",
+      "mode": "CONTRACT",
+      "passed": true,
+      "reason_code": "DETERMINISTIC_VALID"
+    },
+    "evaluation_invoked": true,
+    "evidence_digest": "sha256:0cd5637e47e217f0b99696f3675d255bf4fdefe8429bc4ffa3b3bfcb0211db91",
+    "execution_result": "FINISHED_WITH_RETURN",
+    "finality_status": "FINALIZED",
+    "finalized_at": 1789907391,
+    "network": "genlayer",
+    "policy_digest": "sha256:2af7181bd5826546057127def8dc7d6a7b03d71b910d979aabefaad4d5b5e188",
+    "policy_version": "acceptance-policy.v1",
+    "protocol_status": "FINALIZED",
+    "reason_code": "CRITERION_MET",
+    "receipt_digest": "sha256:54f7bf52f64f150584c1fcf1eda0e63198bbbcbd495e7255eb9d7661a2ad78f9",
+    "schema_version": "proofline.receipt.v1",
+    "transaction_reference": "0xa34586931cebe63f1392c3ea0233a21e406940d12157b78bc3ecec976be50c78",
+    "verdict": "ACCEPT"
+  },
+  "receipt_provenance_verified": true,
+  "registration": {
+    "appeal_status": null,
+    "consensus_result": "MAJORITY_AGREE",
+    "decoded_method": "register_job",
+    "execution_result": "FINISHED_WITH_RETURN",
+    "finality_observed": true,
+    "finalized": true,
+    "finalized_at": 1789906565,
+    "job_id_arg": "browser-1789906301756",
+    "protocol_state": "FINALIZED",
+    "recipient": "0x6eb8E208666694e9948E87aa46294aA349fD2014",
+    "transaction_hash": "0xcec697ccc66ed244a45c8156c4a29f1ead05c399d389609ad1d61a7df96bb491"
+  },
+  "rpc_url": "https://studio-dev.genlayer.com/api",
+  "submission": {
+    "appeal_status": null,
+    "authoritative_finalized_at": 1789907391,
+    "consensus_result": "MAJORITY_AGREE",
+    "decoded_method": "submit_job",
+    "effect_decision_digests": [
+      "sha256:51c34bc82c2c83c9eda4979aaa8c252fab654d05dee67be4beb22a2a609d4e9a",
+      "sha256:51c34bc82c2c83c9eda4979aaa8c252fab654d05dee67be4beb22a2a609d4e9a"
+    ],
+    "effect_job_ids": [
+      "browser-1789906301756",
+      "browser-1789906301756"
+    ],
+    "execution_result": "FINISHED_WITH_RETURN",
+    "finality_observed": true,
+    "finalized": true,
+    "job_id_arg": "browser-1789906301756",
+    "protocol_state": "FINALIZED",
+    "recipient": "0x6eb8E208666694e9948E87aa46294aA349fD2014",
+    "transaction_hash": "0xa34586931cebe63f1392c3ea0233a21e406940d12157b78bc3ecec976be50c78"
+  }
+}

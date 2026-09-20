@@ -1,0 +1,5 @@
+# Stable local/direct lane verified from the installed official package
+# metadata used during implementation. Python >= 3.12 is required.
+eth-account>=0.10,<0.14
+genlayer-py==0.16.3
+genlayer-test==0.29.2
