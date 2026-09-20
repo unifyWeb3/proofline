@@ -50,8 +50,9 @@ Studio Next endpoint for reproducing the authorized lifecycle.
 
 ## Connected frontend API
 
-`frontend/server.py` is a same-origin API for the static frontend. It uses the
-installed RC SDK and does not load a signing account. The prepare endpoints
+`frontend/server.py` is the local same-origin transport for the static frontend,
+and `app.py` exposes the same transport-independent route logic as a Vercel WSGI
+application. It uses the installed RC SDK and does not load a signing account. The prepare endpoints
 return unsigned transactions for the browser provider:
 
 - `POST /api/prepare-register`
@@ -68,3 +69,8 @@ inclusion into a verdict. `GET /api/readback?job=...&from=...` performs the
 authoritative `LATEST_FINAL` contract read. The fresh browser run and its
 registration/submission finality, readback, receipt, and adapter results are
 recorded in `evidence/milestone3-frontend-verification.json`.
+
+The Vercel entrypoint serves the same known static assets and `/api/*` routes
+without a persistent process. Fee-profile inputs are read from the checked-in
+sanitized profile, while lifecycle, final-result, receipt, and adapter truth is
+re-observed from Studio Next for each request.

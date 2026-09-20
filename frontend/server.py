@@ -333,6 +333,93 @@ def _post_route(path: str, body: dict[str, Any]) -> tuple[int, Any]:
     return 404, {"error": "not found"}
 
 
+def _get_route(path: str, query: dict[str, list[str]]) -> tuple[int, Any, str]:
+    """Dispatch GET paths independently of the HTTP transport."""
+    if path == "/api/config":
+        return 200, {"chain_id": CHAIN_ID, "rpc_url": RPC_URL, "contract_address": CONTRACT_ADDRESS}, "application/json"
+    if path == "/api/templates":
+        return 200, _fixture_templates(query["job"][0], query["signer"][0]), "application/json"
+    if path == "/api/lifecycle":
+        return 200, _lifecycle_response(query["tx"][0], query["job"][0]), "application/json"
+    if path == "/api/transaction":
+        return 200, _transaction_response(query["tx"][0]), "application/json"
+    if path == "/api/readback":
+        return 200, _job_readback(query["job"][0], query["from"][0]), "application/json"
+    if path == "/" or path == "/index.html":
+        return 200, (FRONTEND_ROOT / "index.html").read_bytes(), "text/html; charset=utf-8"
+    if path in {"/app.js", "/styles.css"}:
+        asset = FRONTEND_ROOT / path.lstrip("/")
+        content_type = "text/javascript; charset=utf-8" if asset.suffix == ".js" else "text/css; charset=utf-8"
+        return 200, asset.read_bytes(), content_type
+    return 404, {"error": "not found"}, "application/json"
+
+
+def _parse_json_body(raw: bytes) -> dict[str, Any]:
+    if len(raw) > MAX_BODY_BYTES:
+        raise BadRequest("request body is too large")
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise BadRequest("request body must be JSON") from exc
+    if not isinstance(value, dict):
+        raise BadRequest("request body must be an object")
+    return value
+
+
+def _response_bytes(payload: Any) -> bytes:
+    return payload if isinstance(payload, bytes) else json.dumps(payload, ensure_ascii=False).encode("utf-8")
+
+
+def _status_reason(status: int) -> str:
+    return {200: "OK", 400: "Bad Request", 404: "Not Found", 405: "Method Not Allowed", 502: "Bad Gateway"}.get(
+        status, ""
+    )
+
+
+def wsgi_app(environ: dict[str, Any], start_response: Any) -> list[bytes]:
+    """Serve the same API and static assets through Vercel's WSGI entrypoint."""
+    method = environ.get("REQUEST_METHOD", "GET").upper()
+    path = environ.get("PATH_INFO", "/") or "/"
+    query = parse_qs(environ.get("QUERY_STRING", ""))
+    content_type = "application/json"
+    try:
+        if method == "GET":
+            status, payload, content_type = _get_route(path, query)
+        elif method == "POST":
+            try:
+                length = int(environ.get("CONTENT_LENGTH") or "0")
+            except ValueError as exc:
+                raise BadRequest("Content-Length must be an integer") from exc
+            if length < 0:
+                raise BadRequest("Content-Length must not be negative")
+            body = _parse_json_body(environ["wsgi.input"].read(length))
+            status, payload = _post_route(path, body)
+        else:
+            status, payload = 405, {"error": "method not allowed"}
+    except (BadRequest, KeyError, IndexError) as exc:
+        status, payload = 400, {"error": str(exc)}
+    except Exception as exc:  # technical boundary; no verdict is invented
+        if method == "POST":
+            status, payload = 502, {
+                "error": "provider or fee preparation error",
+                "error_type": type(exc).__name__,
+                "detail": _safe_error_detail(exc),
+            }
+        else:
+            status, payload = 502, {"error": f"provider or lifecycle error: {type(exc).__name__}"}
+
+    body = _response_bytes(payload)
+    start_response(
+        f"{status} {_status_reason(status)}",
+        [
+            ("Content-Type", content_type),
+            ("Content-Length", str(len(body))),
+            ("Cache-Control", "no-store"),
+        ],
+    )
+    return [body]
+
+
 def _status_label(snapshot: Any) -> str:
     if snapshot.execution_result and snapshot.execution_result not in {
         "NOT_STARTED", "PENDING", "PROCESSING", "FINISHED_WITH_RETURN"
@@ -454,34 +541,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         try:
-            if parsed.path == "/api/config":
-                self._send(200, {"chain_id": CHAIN_ID, "rpc_url": RPC_URL, "contract_address": CONTRACT_ADDRESS})
-                return
-            if parsed.path == "/api/templates":
-                query = parse_qs(parsed.query)
-                self._send(200, _fixture_templates(query["job"][0], query["signer"][0]))
-                return
-            if parsed.path == "/api/lifecycle":
-                query = parse_qs(parsed.query)
-                self._send(200, _lifecycle_response(query["tx"][0], query["job"][0]))
-                return
-            if parsed.path == "/api/transaction":
-                query = parse_qs(parsed.query)
-                self._send(200, _transaction_response(query["tx"][0]))
-                return
-            if parsed.path == "/api/readback":
-                query = parse_qs(parsed.query)
-                self._send(200, _job_readback(query["job"][0], query["from"][0]))
-                return
-            if parsed.path == "/" or parsed.path == "/index.html":
-                self._send(200, (FRONTEND_ROOT / "index.html").read_bytes(), "text/html; charset=utf-8")
-                return
-            if parsed.path in {"/app.js", "/styles.css"}:
-                path = FRONTEND_ROOT / parsed.path.lstrip("/")
-                content_type = "text/javascript; charset=utf-8" if path.suffix == ".js" else "text/css; charset=utf-8"
-                self._send(200, path.read_bytes(), content_type)
-                return
-            self._send(404, {"error": "not found"})
+            status, payload, content_type = _get_route(parsed.path, parse_qs(parsed.query))
+            self._send(status, payload, content_type)
         except (BadRequest, KeyError, IndexError) as exc:
             self._send(400, {"error": str(exc)})
         except Exception as exc:  # technical boundary; no verdict is invented
@@ -490,7 +551,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         try:
             body = self._body()
-            status, payload = _post_route(self.path, body)
+            status, payload = _post_route(urlparse(self.path).path, body)
             self._send(status, payload)
         except BadRequest as exc:
             self._send(400, {"error": str(exc)})

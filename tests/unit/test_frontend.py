@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -22,6 +23,7 @@ from frontend.server import (
     _status_label,
     _unsigned_write,
     _validated_contract_inputs,
+    wsgi_app,
 )
 from proofline.canonical import digest_json, sha256_bytes
 
@@ -199,6 +201,38 @@ def test_frontend_fee_target_is_the_official_studio_dev_identity():
     assert CHAIN_ID == 61997
     assert RPC_URL == "https://studio-dev.genlayer.com/api"
     assert CONTRACT_ADDRESS == "0x6eb8E208666694e9948E87aa46294aA349fD2014"
+
+
+def test_vercel_wsgi_entrypoint_reuses_config_and_envelope_routes():
+    from app import app as vercel_app
+
+    assert vercel_app is wsgi_app
+    responses = []
+
+    def start_response(status, headers):
+        responses.append((status, dict(headers)))
+
+    config_body = b"".join(
+        wsgi_app(
+            {"REQUEST_METHOD": "GET", "PATH_INFO": "/api/config", "QUERY_STRING": ""},
+            start_response,
+        )
+    )
+    assert responses[-1][0] == "200 OK"
+    assert json.loads(config_body)["chain_id"] == 61997
+
+    templates = _fixture_templates("wsgi-audit-1", "0x3211d1419709682b81c53CC51cb63622E25488d3")
+    body = json.dumps(templates).encode()
+    environ = {
+        "CONTENT_LENGTH": str(len(body)),
+        "wsgi.input": BytesIO(body),
+        "REQUEST_METHOD": "POST",
+        "PATH_INFO": "/api/build-envelope",
+        "QUERY_STRING": "",
+    }
+    envelope_body = b"".join(wsgi_app(environ, start_response))
+    assert responses[-1][0] == "200 OK"
+    assert json.loads(envelope_body)["envelope"]["schema_version"] == "proofline.response.v1"
 
 
 def test_frontend_documents_real_fixture_templates_and_safe_error_details():

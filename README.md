@@ -58,7 +58,8 @@ These signals do not imply settlement, custody, payments, or funds movement.
 
 ## Local setup
 
-Use Python 3.12 or newer. For the stable local/direct lane:
+Use Python 3.12 or newer. For the connected frontend and Vercel runtime,
+install the matching Consensus v0.6 RC client:
 
 ```bash
 python -m venv .venv
@@ -66,7 +67,13 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-For the Consensus v0.6 RC hosted/readback path, install the pinned RC lane:
+For the historical stable direct-test lane, install:
+
+```bash
+pip install -r requirements-direct.txt
+```
+
+For the full Consensus v0.6 RC hosted/readback and test path, install the pinned RC lane:
 
 ```bash
 python -m venv .venv-rc
@@ -74,13 +81,17 @@ python -m venv .venv-rc
 pip install -r requirements-rc.txt
 ```
 
-The frontend server expects the RC client and serves the dependency-free browser
-surface on port 8787:
+The frontend server expects the RC client and serves the browser surface on port
+8787:
 
 ```bash
 . .venv-rc/bin/activate
 python frontend/server.py --port 8787
 ```
+
+Vercel loads the same stateless API through the root `app.py` WSGI entrypoint.
+The API reads authoritative lifecycle state from Studio Next on each request and
+does not persist transaction or wallet state locally.
 
 User signing is performed by an injected wallet. No private key belongs in
 `.env`, frontend source, browser storage, or public configuration.
