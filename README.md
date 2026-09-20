@@ -1,9 +1,13 @@
 # Proofline
 
-Proofline is a GenLayer-native semantic acceptance adapter. It checks the
-contract-defined evidence and policy requirements first, uses bounded semantic
-evaluation where required, and turns only an authoritative finalized decision
-into a verifiable receipt.
+[Live app](https://proofline-nu.vercel.app) · [GitHub](https://github.com/unifyWeb3/proofline)
+
+Proofline turns policy, agreement, and evidence into a finalized GenLayer
+decision that anyone can verify. It produces a provenance-bound receipt and a
+clear LocalAdapter readiness signal.
+
+The public app is live on Vercel and uses Studio Next chain `61997` with the
+deployed contract `0x6eb8E208666694e9948E87aa46294aA349fD2014`.
 
 ## What it solves
 
@@ -105,14 +109,17 @@ python -m compileall -q proofline frontend tests
 python -m pip check
 ```
 
-The completed project verification recorded 48 unit tests and 35 direct tests
+The completed project verification recorded 49 unit tests and 35 direct tests
 passing, plus compile, dependency, JavaScript syntax, and frontend security
 checks.
 
 ## Verified status and limitations
 
 Proofline Milestones 1–3 are complete. The hosted and browser verification
-artifacts are under `evidence/`. Studio Next is a development preview, and the
-recorded frontend result is one verified browser/provider run. This repository
-does not claim mainnet deployment, custody, payments, settlement, or production
-release hardening.
+artifacts are under `evidence/`. The live browser flow has verified wallet
+connection, job registration and submission, finalized readback, receipt
+verification, and LocalAdapter readiness on Studio Next. Studio Next remains a
+development preview; this project does not claim mainnet deployment, custody,
+payments, settlement, or release hardening.
+
+No license has been selected for this release yet.

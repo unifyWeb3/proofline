@@ -1,6 +1,6 @@
 # Contract Interface
 
-Source: [contracts/proofline.py](/home/unify/athens/contracts/proofline.py).
+Source: [contracts/proofline.py](../contracts/proofline.py).
 The contract uses the pinned GenVM runner hash required by the official
 boilerplate.
 
@@ -68,5 +68,6 @@ creation, or a moving observation timestamp.
 The corrected authorized Studio Next proof uses contract
 `0x6eb8E208666694e9948E87aa46294aA349fD2014` and is recorded in
 `evidence/milestone2-hosted-correction.json`; the semantic fee profile is
-`evidence/fee-profile-milestone2-correction.json`. The older
-`evidence/milestone2-hosted.json` and `fee-profile.json` remain historical.
+`evidence/fee-profile-milestone2-correction.json`. Older baseline artifacts are
+historical development material and are intentionally excluded from this public
+release.
