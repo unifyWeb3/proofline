@@ -347,7 +347,9 @@ def _get_route(path: str, query: dict[str, list[str]]) -> tuple[int, Any, str]:
         return 200, _job_readback(query["job"][0], query["from"][0]), "application/json"
     if path == "/" or path == "/index.html":
         return 200, (FRONTEND_ROOT / "index.html").read_bytes(), "text/html; charset=utf-8"
-    if path in {"/app.js", "/styles.css"}:
+    if path == "/app":
+        return 200, (FRONTEND_ROOT / "app.html").read_bytes(), "text/html; charset=utf-8"
+    if path in {"/app.js", "/home.js", "/verified-example.js", "/styles.css"}:
         asset = FRONTEND_ROOT / path.lstrip("/")
         content_type = "text/javascript; charset=utf-8" if asset.suffix == ".js" else "text/css; charset=utf-8"
         return 200, asset.read_bytes(), content_type

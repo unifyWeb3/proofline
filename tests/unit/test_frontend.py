@@ -55,7 +55,7 @@ def test_browser_final_view_requires_verified_receipt():
     assert "data.finality_observed" in app
     assert "/api/transaction?tx=" in app
     assert "Registration finalized" in app
-    assert 'id="receipt-json"' in (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    assert 'id="receipt-json"' in (ROOT / "frontend" / "app.html").read_text(encoding="utf-8")
     assert "receipt_verification" in app
     assert 'textContent = JSON.stringify(r, null, 2)' in app
     assert "download-receipt" in app
@@ -235,8 +235,32 @@ def test_vercel_wsgi_entrypoint_reuses_config_and_envelope_routes():
     assert json.loads(envelope_body)["envelope"]["schema_version"] == "proofline.response.v1"
 
 
+def test_public_root_and_app_routes_are_distinct_and_refreshable():
+    responses = []
+
+    def start_response(status, headers):
+        responses.append((status, dict(headers)))
+
+    root_body = b"".join(wsgi_app({"REQUEST_METHOD": "GET", "PATH_INFO": "/", "QUERY_STRING": ""}, start_response)).decode()
+    assert responses[-1][0] == "200 OK"
+    assert "Verifiable acceptance for agent work." in root_body
+    assert "Launch App" in root_body
+    assert 'id="job-id"' not in root_body
+
+    app_body = b"".join(wsgi_app({"REQUEST_METHOD": "GET", "PATH_INFO": "/app", "QUERY_STRING": ""}, start_response)).decode()
+    assert responses[-1][0] == "200 OK"
+    assert 'id="job-id"' in app_body
+    assert 'id="receipt-json"' in app_body
+    assert "Define" in app_body and "Submit" in app_body and "Verify" in app_body
+
+    for asset in ("/styles.css", "/home.js", "/verified-example.js", "/app.js"):
+        body = b"".join(wsgi_app({"REQUEST_METHOD": "GET", "PATH_INFO": asset, "QUERY_STRING": ""}, start_response))
+        assert responses[-1][0] == "200 OK"
+        assert body
+
+
 def test_frontend_documents_real_fixture_templates_and_safe_error_details():
-    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    html = (ROOT / "frontend" / "app.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     assert "Known-good Milestone 2 JSON shapes" in html
     assert "Known-good evidence JSON shape" in html

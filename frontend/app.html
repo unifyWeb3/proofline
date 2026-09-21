@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Proofline turns agent work into a finalized, verifiable acceptance receipt.">
+    <title>Proofline · Verification workspace</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="app-shell app-shell-workspace">
+      <header class="site-header app-header" aria-label="Proofline application header">
+        <a class="brand" href="/" aria-label="Proofline home">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="brand-name">Proofline</span>
+          <span class="brand-caption">acceptance layer</span>
+        </a>
+        <nav class="site-nav app-nav" aria-label="Application navigation">
+          <a class="active" href="/app">New verification</a>
+          <button id="view-example" class="nav-link" type="button">Verified example</button>
+          <a href="https://github.com/unifyWeb3/proofline" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+        <div class="header-actions">
+          <span id="network" class="network-badge"><span class="status-dot" aria-hidden="true"></span>Studio Next · 61997</span>
+          <button id="connect" class="button button-secondary button-wallet" type="button">Connect wallet</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="app-intro" aria-labelledby="workspace-title">
+          <div>
+            <p class="eyebrow">Proofline / App</p>
+            <h1 id="workspace-title">Bring a job to a verified result.</h1>
+            <p class="app-intro-copy">Define the acceptance standard, submit the completed work, and inspect the authoritative finalized receipt.</p>
+          </div>
+          <div class="app-intro-note"><span class="status-dot status-dot-success" aria-hidden="true"></span><span>Wallet signing stays in your browser.</span></div>
+        </section>
+
+        <section id="verify" class="workspace" aria-labelledby="workflow-title">
+          <div class="workspace-heading">
+            <div>
+              <p class="eyebrow">Verification workflow</p>
+              <h2 id="workflow-title">Define <span aria-hidden="true">→</span> Submit <span aria-hidden="true">→</span> Verify</h2>
+            </div>
+            <p class="workspace-description">One focused step at a time. Technical evidence stays available when you need to inspect it.</p>
+          </div>
+
+          <ol class="stepper" aria-label="Verification stages">
+            <li class="stepper-item active" data-step-nav="define" tabindex="0" role="button"><span>01</span><div><strong>Define</strong><small>Set the acceptance standard</small></div></li>
+            <li class="stepper-line" aria-hidden="true"></li>
+            <li class="stepper-item" data-step-nav="submit" tabindex="0" role="button"><span>02</span><div><strong>Submit</strong><small>Provide the completed work</small></div></li>
+            <li class="stepper-line" aria-hidden="true"></li>
+            <li class="stepper-item" data-step-nav="verify" tabindex="0" role="button"><span>03</span><div><strong>Verify</strong><small>Inspect the finalized result</small></div></li>
+          </ol>
+
+          <section class="stage is-active" id="stage-define" data-stage="define" aria-labelledby="define-title">
+            <div class="stage-heading">
+              <div class="stage-number">01</div>
+              <div><p class="stage-kicker">Define</p><h3 id="define-title">Tell Proofline what successful work looks like.</h3><p class="stage-copy">The job ID connects your policy, agreement, evidence, and final receipt.</p></div>
+            </div>
+            <div class="stage-content">
+              <div class="field-group">
+                <label for="job-id">Job ID <span class="required">Required</span></label>
+                <input id="job-id" autocomplete="off" placeholder="fresh unique job id" aria-describedby="job-help">
+                <small id="job-help" class="field-help">Use 1–64 characters: letters, numbers, dot, underscore, or hyphen. A fresh ID keeps this run separate.</small>
+              </div>
+              <div class="definition-summary" aria-label="Acceptance standard summary">
+                <div class="summary-icon" aria-hidden="true">◎</div>
+                <div><strong>Acceptance standard</strong><p>Response evidence · deterministic checks · bounded semantic criterion</p></div>
+                <span class="badge badge-neutral">Policy-bound</span>
+              </div>
+              <details class="advanced-details">
+                <summary><span>Advanced details</span><small>Policy JSON</small></summary>
+                <div class="details-body">
+                  <p class="details-copy">The exact contract registration object. Edit only if you understand the Proofline policy schema.</p>
+                  <label class="sr-only" for="policy">Policy JSON</label>
+                  <textarea id="policy" class="json-editor" spellcheck="false" placeholder="Connect the wallet to load the known-good policy shape."></textarea>
+                </div>
+              </details>
+              <details class="advanced-details">
+                <summary><span>Advanced details</span><small>Agreement JSON</small></summary>
+                <div class="details-body">
+                  <p class="details-copy">The agreement is checked against the registered policy and job before fee preparation.</p>
+                  <label class="sr-only" for="agreement">Agreement JSON</label>
+                  <textarea id="agreement" class="json-editor" spellcheck="false" placeholder="Connect the wallet to load the known-good agreement shape."></textarea>
+                </div>
+              </details>
+              <details class="advanced-details fixture-details">
+                <summary><span>View schema example</span><small>Known-good Milestone 2 JSON shapes</small></summary>
+                <div class="details-body schema-example">
+                  <p class="details-copy">These are the exact schemas used by the hosted semantic ACCEPT fixture. Connecting the wallet loads fresh identity and deadline values. Evidence belongs in Stage 2.</p>
+                  <pre>{
+  "schema_version": "proofline.policy.v1",
+  "policy_version": "acceptance-policy.v1",
+  "agreement_id": "job-pass",
+  "deadline": 1789887377,
+  "signer_address": "0x3211d1419709682b81c53CC51cb63622E25488d3",
+  "required_artifacts": ["response"],
+  "deterministic_requirements": {"max_evidence_age_seconds": 7200, "require_snapshot": true},
+  "subjective_criterion": {
+    "id": "quality",
+    "statement": "The response must clearly answer the requested report question with actionable evidence.",
+    "allowed_verdicts": ["ACCEPT", "REJECT", "UNDETERMINED"]
+  },
+  "evidence_allowlist": ["embedded://evidence"]
+}</pre>
+                  <pre>{
+  "schema_version": "proofline.agreement.v1",
+  "agreement_id": "job-pass",
+  "policy_version": "acceptance-policy.v1",
+  "parties": {"buyer": "buyer-fixture", "worker": "worker-fixture"},
+  "agreement_digest": "sha256:5cb834ec078157ddf160f072368ba765b8f5fdad3e317c8fb03cba606d11d0ad"
+}</pre>
+                </div>
+              </details>
+              <div class="stage-actions">
+                <button id="register" class="button button-primary" type="button" disabled>Register with wallet</button>
+                <div id="register-state" class="inline-state" aria-live="polite"><span class="state-marker" aria-hidden="true">○</span><span>No wallet connected</span><small>Connect a wallet on Studio Next to register this job.</small></div>
+              </div>
+              <button class="stage-next" type="button" data-go-stage="submit">Continue to Submit <span aria-hidden="true">→</span></button>
+            </div>
+          </section>
+
+          <section class="stage" id="stage-submit" data-stage="submit" aria-labelledby="submit-title" hidden>
+            <div class="stage-heading">
+              <div class="stage-number">02</div>
+              <div><p class="stage-kicker">Submit</p><h3 id="submit-title">Provide the request and completed work.</h3><p class="stage-copy">Proofline derives the canonical evidence package and every digest from the content you provide.</p></div>
+            </div>
+            <div class="stage-content">
+              <div class="structured-evidence">
+                <div class="structured-evidence-header"><div><strong>Evidence to evaluate</strong><p>Describe the request and the completed response in plain language.</p></div><span class="badge badge-neutral">Canonicalized</span></div>
+                <div class="field-grid two-fields">
+                  <div class="field-group"><label for="request-question">Request <span class="label-hint">What was asked?</span></label><input id="request-question" placeholder="What should the agent resolve?" aria-describedby="evidence-help"></div>
+                  <div class="field-group"><label for="response-answer">Completed work <span class="label-hint">What was delivered?</span></label><input id="response-answer" placeholder="Summarize the completed response."></div>
+                </div>
+                <div class="field-group"><label for="response-evidence">Supporting evidence <span class="label-hint">Comma-separated references</span></label><input id="response-evidence" placeholder="test-run-001, report-001"></div>
+                <small id="evidence-help" class="field-help">The request and response are stored as evidence content. Hashes are generated from the canonical bytes.</small>
+              </div>
+              <details class="advanced-details">
+                <summary><span>Advanced details</span><small>Known-good evidence JSON shape</small></summary>
+                <div class="details-body">
+                  <p class="details-copy">Edit the exact evidence object sent to the existing <code>submit_job</code> path. It must contain request and response objects.</p>
+                  <label class="sr-only" for="evidence-content">Evidence JSON</label>
+                  <textarea id="evidence-content" class="json-editor evidence-editor" spellcheck="false" placeholder="Connect the wallet to load the genuine request/response fixture."></textarea>
+                </div>
+              </details>
+              <div class="stage-actions submit-actions">
+                <button id="build-envelope" class="button button-secondary" type="button">Build evidence package</button>
+                <p class="action-explainer">Creates the canonical Proofline envelope and digests.</p>
+              </div>
+              <div id="envelope-state" class="inline-state" aria-live="polite"><span class="state-marker" aria-hidden="true">○</span><span>Evidence package not built</span><small>Build it after defining the request and completed work.</small></div>
+              <div id="digest-list" class="digest-list hidden" aria-label="Generated evidence digests">
+                <div class="digest-row"><span>Evidence digest</span><code id="evidence-digest">—</code><button class="copy-button" type="button" data-copy-target="evidence-digest">Copy</button></div>
+                <div class="digest-row"><span>Policy digest</span><code id="policy-digest">—</code><button class="copy-button" type="button" data-copy-target="policy-digest">Copy</button></div>
+                <div class="digest-row"><span>Agreement digest</span><code id="agreement-digest">—</code><button class="copy-button" type="button" data-copy-target="agreement-digest">Copy</button></div>
+              </div>
+              <details id="envelope-details" class="advanced-details hidden">
+                <summary><span>View envelope JSON</span><small>Full canonical payload</small></summary>
+                <div class="details-body"><label class="sr-only" for="envelope">Generated envelope JSON</label><textarea id="envelope" class="json-editor" spellcheck="false" readonly placeholder="Build the evidence package first."></textarea></div>
+              </details>
+              <div class="stage-actions">
+                <button id="submit" class="button button-primary" type="button" disabled>Submit with wallet</button>
+                <div id="submit-state" class="inline-state" aria-live="polite"><span class="state-marker" aria-hidden="true">○</span><span>Waiting for registration</span><small>Registration must reach finality before submission is enabled.</small></div>
+              </div>
+              <button class="stage-next" type="button" data-go-stage="verify">Continue to Verify <span aria-hidden="true">→</span></button>
+            </div>
+          </section>
+
+          <section class="stage stage-verify" id="stage-verify" data-stage="verify" aria-labelledby="verify-title" hidden>
+            <div class="stage-heading">
+              <div class="stage-number">03</div>
+              <div><p class="stage-kicker">Verify</p><h3 id="verify-title">Inspect the finalized result.</h3><p class="stage-copy">A transaction is only a submission. Proofline shows a verdict after authoritative finality and readback.</p></div>
+            </div>
+            <div class="stage-content">
+              <div id="example-note" class="example-note hidden" role="status"><span class="example-note-icon" aria-hidden="true">◆</span><span>Existing verified example · no wallet transaction was made for this view.</span></div>
+              <div class="timeline-wrap">
+                <ol id="lifecycle-timeline" class="timeline" aria-label="Job lifecycle">
+                  <li data-timeline="submitted"><span class="timeline-node">1</span><div><strong>Submitted</strong><small>Waiting for a transaction</small></div></li>
+                  <li data-timeline="evaluating"><span class="timeline-node">2</span><div><strong>Evaluating</strong><small>Deterministic checks and evaluation</small></div></li>
+                  <li data-timeline="consensus"><span class="timeline-node">3</span><div><strong>Consensus</strong><small>Protocol status will appear here</small></div></li>
+                  <li data-timeline="finalized"><span class="timeline-node">4</span><div><strong>Finalized</strong><small>Authoritative result available</small></div></li>
+                </ol>
+              </div>
+              <div id="lifecycle" class="inline-state empty-result" aria-live="polite"><span class="state-marker" aria-hidden="true">○</span><span>No result yet</span><small>Register the job and submit evidence to start evaluation.</small></div>
+              <div id="receipt-status" class="receipt-status status-pill status-pending" aria-live="polite"><span class="status-dot" aria-hidden="true"></span>Receipt verification: PENDING</div>
+              <div id="result" class="result hidden"></div>
+              <details id="receipt-panel" class="advanced-details receipt-details hidden">
+                <summary><span>View receipt</span><small>Structured proofline.receipt.v1</small></summary>
+                <div class="details-body receipt-body">
+                  <p class="details-copy">This is the verified receipt produced from lifecycle observation. Its provenance remains bound to the producing submission transaction.</p>
+                  <pre id="receipt-json"></pre>
+                  <button id="download-receipt" class="button button-secondary" type="button">Download JSON</button>
+                </div>
+              </details>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <footer class="site-footer"><span>Proofline · Studio Next · chain 61997</span><a href="https://github.com/unifyWeb3/proofline" target="_blank" rel="noreferrer">Open source on GitHub ↗</a></footer>
+    </div>
+    <script src="/verified-example.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

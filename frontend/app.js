@@ -8,11 +8,6 @@
   let activeReceipt = null;
   let syncingEvidenceFields = false;
 
-  const VERIFIED_EXAMPLE = {
-    job: "browser-1789906301756",
-    transaction: "0xa34586931cebe63f1392c3ea0233a21e406940d12157b78bc3ecec976be50c78",
-  };
-
   const provider = () => window.ethereum;
   const JOB_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
   const POLICY_KEYS = ["agreement_id", "deadline", "deterministic_requirements", "evidence_allowlist", "policy_version", "required_artifacts", "schema_version", "signer_address", "subjective_criterion"];
@@ -158,8 +153,21 @@
     return hash;
   }
 
-  function setStepNav(step) {
-    document.querySelectorAll("[data-step-nav]").forEach((node) => node.classList.toggle("active", node.dataset.stepNav === step));
+  function setStepNav(step, shouldScroll = false) {
+    document.querySelectorAll("[data-step-nav]").forEach((node) => {
+      const active = node.dataset.stepNav === step;
+      node.classList.toggle("active", active);
+      node.setAttribute("aria-current", active ? "step" : "false");
+    });
+    document.querySelectorAll(".stage[data-stage]").forEach((stage) => {
+      const active = stage.dataset.stage === step;
+      stage.hidden = !active;
+      stage.classList.toggle("is-active", active);
+    });
+    if (shouldScroll) {
+      const stage = document.querySelector(`.stage[data-stage="${step}"]`);
+      stage?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    }
   }
 
   async function register() {
@@ -194,7 +202,7 @@
         setState($("register-state"), `Registration finalized · ${registrationHash}`, "finalized", "The job is now eligible for evidence submission.");
         $("submit").disabled = false;
         setState($("submit-state"), "Ready to submit", "success", "Registration reached authoritative finality. Wallet authorization is still required.");
-        setStepNav("submit");
+        setStepNav("submit", true);
         return;
       }
       setState($("register-state"), `Registration pending · ${data.protocol_status || "processing"}`, "muted", "Waiting for authoritative registration finality.");
@@ -217,7 +225,7 @@
       const prepared = await prepare("/api/prepare-submit", body);
       submitHash = await sendPrepared(prepared, $("submit-state"));
       setState($("submit-state"), `Submission submitted · ${submitHash}`, "muted", "Proofline is now observing the protocol lifecycle.");
-      setStepNav("verify");
+      setStepNav("verify", true);
       updateTimeline({ transaction_hash: submitHash, state: "pending" });
       pollLifecycle();
     } catch (error) {
@@ -302,13 +310,9 @@
     const button = $("view-example");
     try {
       button.disabled = true;
-      setStepNav("verify");
-      $("stage-verify").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+      setStepNav("verify", true);
       setState($("lifecycle"), "Loading verified example…", "muted", "Reading the existing finalized job from Studio Next.");
-      const response = await fetch(`/api/lifecycle?tx=${encodeURIComponent(VERIFIED_EXAMPLE.transaction)}&job=${encodeURIComponent(VERIFIED_EXAMPLE.job)}`, { cache: "no-store" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Verified example could not be loaded");
-      if (!data.receipt || !data.finality_observed) throw new Error("Verified example is not finalized");
+      const data = await window.fetchProoflineVerifiedExample();
       $("example-note").classList.remove("hidden");
       updateTimeline(data);
       setReceiptStatus(data.receipt_verification || "pending");
@@ -396,6 +400,19 @@
   $("view-example").addEventListener("click", viewVerifiedExample);
   $("download-receipt").addEventListener("click", downloadReceipt);
   ["request-question", "response-answer", "response-evidence"].forEach((id) => $(id).addEventListener("input", syncEvidenceFields));
+  document.querySelectorAll("[data-step-nav]").forEach((node) => {
+    const activate = () => setStepNav(node.dataset.stepNav, true);
+    node.addEventListener("click", activate);
+    node.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        activate();
+      }
+    });
+  });
+  document.querySelectorAll("[data-go-stage]").forEach((node) => {
+    node.addEventListener("click", () => setStepNav(node.dataset.goStage, true));
+  });
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-copy-target], [data-copy-value]");
     if (!button) return;
@@ -403,6 +420,8 @@
     const value = button.dataset.copyValue || target?.title || target?.textContent || "";
     copyText(value, button);
   });
+  setStepNav("define");
   $("job-id").value = `browser-${Date.now()}`;
   config().then((data) => setNetwork(`Studio Next · ${data.chain_id}`, true)).catch((error) => setNetwork(error.message, false));
+  if (new URLSearchParams(window.location.search).get("example") === "verified") viewVerifiedExample();
 })();
