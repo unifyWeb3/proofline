@@ -39,9 +39,17 @@ Proofline is a narrow semantic acceptance adapter. Its authoritative flow is:
 ## Local versus hosted
 
 The direct runner executes the leader path and mocks evaluator output. It proves
-state transitions, input boundaries, structured-output handling, and the
-failed-leader branch of the captured validator. It does not prove validator
-consensus, real disagreement behavior, appeals, or hosted finality.
+state transitions, input boundaries, structured-output handling, and exercises
+the captured v0.6 RC validator callback using `gl.vm.Return.calldata`. The
+comparator validates both payloads and requires matching verdict, reason code,
+policy digest, and evidence digest; rationale may differ. Direct tests cover
+valid conflicting verdict/reason results, matching decisions, malformed
+payloads, and technical failure. This does not prove validator committee
+consensus, appeals, or hosted finality. The corrected comparator source is
+deployed at `0x30829d13D0d86a9ae83Dc5e832Fb4AADd43Df26b`; hosted semantic
+success on that deployment is separately evidenced, but no valid committee
+disagreement was observed. A fresh Production browser flow on that address is
+recorded at `evidence/milestone4-browser-verification-20260924.json`.
 `DIRECT_MODE` and `LOCAL_ONLY` are local provenance labels. Hosted finalized
 receipts require `FINALIZED`, SDK execution result `FINISHED_WITH_RETURN`, a
 matching configured chain/contract identity, the successful decision effect of

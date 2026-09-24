@@ -15,10 +15,18 @@ __pycache__/
 .coverage.*
 coverage/
 artifacts/
+.ruff_cache/
+.mypy_cache/
+.cache/
+node_modules/
+build/
+dist/
+.next/
 
 # Runtime and generated output
 *.log
 state/*.log
+state/
 .vercel/
 
 # Editor and operating-system files

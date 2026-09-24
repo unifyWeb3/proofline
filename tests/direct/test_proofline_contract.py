@@ -52,6 +52,19 @@ def _submit(contract, fixture, envelope=None, evidence=None, agreement=None, pol
     )
 
 
+def _semantic_result(fixture, verdict, reason_code, rationale):
+    deterministic = validate_submission(
+        fixture["policy"], fixture["agreement"], fixture["envelope"], fixture["evidence"], now=FIXTURE_NOW
+    )
+    return {
+        "verdict": verdict,
+        "reason_code": reason_code,
+        "evidence_digest": deterministic.evidence_digest,
+        "policy_digest": AcceptancePolicy.from_dict(fixture["policy"]).digest,
+        "rationale": rationale,
+    }
+
+
 def test_direct_contract_schema_and_read_views(direct_vm, direct_deploy):
     contract = direct_deploy(CONTRACT_PATH)
     assert contract.get_contract_schema_version() == "proofline.response.v1"
@@ -97,6 +110,59 @@ def test_direct_semantic_acceptance_uses_bounded_llm_mock(direct_vm, direct_depl
     assert result["schema_version"] == "proofline.decision.v1"
 
 
+def test_direct_semantic_prompt_separates_digest_from_criterion(direct_vm, direct_deploy):
+    fixture = make_fixture("job-pass")
+    deterministic = validate_submission(
+        fixture["policy"], fixture["agreement"], fixture["envelope"], fixture["evidence"], now=FIXTURE_NOW
+    )
+    policy_digest = AcceptancePolicy.from_dict(fixture["policy"]).digest
+    direct_vm.mock_llm(
+        r"Use the matching reason_code exactly: ACCEPT=CRITERION_MET, "
+        r"REJECT=CRITERION_NOT_MET, UNDETERMINED=INSUFFICIENT_EVIDENCE\.\n"
+        r"Copy both expected digest values exactly\. Do not calculate or alter them\. "
+        r"Rationale must be one factual sentence of at most 120 characters\.\n"
+        r"expected_policy_digest=sha256:[0-9a-f]{64}\n"
+        r"expected_evidence_digest=sha256:[0-9a-f]{64}\ncriterion=",
+        _json(
+            {
+                "verdict": "ACCEPT",
+                "reason_code": "CRITERION_SATISFIED",
+                "evidence_digest": deterministic.evidence_digest,
+                "policy_digest": policy_digest,
+                "rationale": "fixture criterion satisfied",
+            }
+        ),
+    )
+    result = _submit(_deploy_registered(direct_vm, direct_deploy, fixture), fixture)
+    assert result["verdict"] == "ACCEPT"
+
+
+def test_direct_semantic_output_failure_has_safe_category_and_does_not_store(
+    direct_vm, direct_deploy
+):
+    fixture = make_fixture("job-pass")
+    deterministic = validate_submission(
+        fixture["policy"], fixture["agreement"], fixture["envelope"], fixture["evidence"], now=FIXTURE_NOW
+    )
+    direct_vm.mock_llm(
+        r".*",
+        _json({
+            "verdict": "ACCEPT",
+            "reason_code": "CRITERION_MET",
+            "evidence_digest": deterministic.evidence_digest,
+            "policy_digest": AcceptancePolicy.from_dict(fixture["policy"]).digest,
+            "rationale": "x" * 501,
+        }),
+    )
+    contract = _deploy_registered(direct_vm, direct_deploy, fixture)
+    with direct_vm.expect_revert(
+        "[LLM_ERROR] MALFORMED_EVALUATOR_OUTPUT:RATIONALE_INVALID"
+    ):
+        _submit(contract, fixture)
+    assert contract.get_job(fixture["job_id"]) == ""
+    assert contract.nonce_used(fixture["envelope"]["nonce"]) is False
+
+
 def test_direct_captured_equivalence_validator_rejects_failed_leader(direct_vm, direct_deploy):
     fixture = make_fixture("job-pass")
     deterministic = validate_submission(
@@ -120,6 +186,90 @@ def test_direct_captured_equivalence_validator_rejects_failed_leader(direct_vm, 
     # This exercises the captured comparator's technical-failure path only.
     # It is not evidence of a hosted validator committee or consensus.
     assert direct_vm.run_validator(leader_error=RuntimeError("leader failed")) is False
+
+
+@pytest.mark.parametrize(
+    ("conflicting_field", "conflicting_value", "conflicting_reason"),
+    [
+        ("verdict", "REJECT", "CRITERION_NOT_SATISFIED"),
+        ("reason_code", "CRITERION_REVISED", "CRITERION_SATISFIED"),
+    ],
+)
+def test_direct_captured_equivalence_rejects_valid_decision_disagreement(
+    direct_vm, direct_deploy, conflicting_field, conflicting_value, conflicting_reason
+):
+    fixture = make_fixture("job-pass")
+    validator_result = _semantic_result(
+        fixture, "ACCEPT", "CRITERION_SATISFIED", "validator rationale"
+    )
+    direct_vm.mock_llm(r".*", _json(validator_result))
+    contract = _deploy_registered(direct_vm, direct_deploy, fixture)
+    assert _submit(contract, fixture)["verdict"] == "ACCEPT"
+
+    leader_result = _semantic_result(
+        fixture, "ACCEPT", "CRITERION_SATISFIED", "leader rationale"
+    )
+    leader_result[conflicting_field] = conflicting_value
+    if conflicting_field == "verdict":
+        leader_result["reason_code"] = conflicting_reason
+    assert set(leader_result) == {
+        "verdict", "reason_code", "evidence_digest", "policy_digest", "rationale"
+    }
+    assert leader_result["evidence_digest"] == validator_result["evidence_digest"]
+    assert leader_result["policy_digest"] == validator_result["policy_digest"]
+
+    # Both payloads independently satisfy the evaluator schema and digest
+    # bindings; the captured callback must reject their decision conflict.
+    assert direct_vm.run_validator(leader_result=leader_result) is False
+
+
+def test_direct_captured_equivalence_accepts_matching_decision_fields_with_distinct_rationale(
+    direct_vm, direct_deploy
+):
+    fixture = make_fixture("job-pass")
+    validator_result = _semantic_result(
+        fixture, "ACCEPT", "CRITERION_SATISFIED", "validator explanation"
+    )
+    direct_vm.mock_llm(r".*", _json(validator_result))
+    contract = _deploy_registered(direct_vm, direct_deploy, fixture)
+    assert _submit(contract, fixture)["verdict"] == "ACCEPT"
+
+    leader_result = {**validator_result, "rationale": "different explanation"}
+    assert direct_vm.run_validator(leader_result=leader_result) is True
+
+
+def test_direct_captured_equivalence_rejects_malformed_leader_payload(direct_vm, direct_deploy):
+    fixture = make_fixture("job-pass")
+    valid_result = _semantic_result(
+        fixture, "ACCEPT", "CRITERION_SATISFIED", "valid explanation"
+    )
+    direct_vm.mock_llm(r".*", _json(valid_result))
+    contract = _deploy_registered(direct_vm, direct_deploy, fixture)
+    assert _submit(contract, fixture)["verdict"] == "ACCEPT"
+
+    malformed_leader = {key: value for key, value in valid_result.items() if key != "rationale"}
+    assert direct_vm.run_validator(leader_result=malformed_leader) is False
+
+
+def test_direct_captured_equivalence_fails_closed_on_validator_evaluation_error(
+    direct_vm, direct_deploy, monkeypatch
+):
+    fixture = make_fixture("job-pass")
+    valid_result = _semantic_result(
+        fixture, "ACCEPT", "CRITERION_SATISFIED", "valid explanation"
+    )
+    direct_vm.mock_llm(r".*", _json(valid_result))
+    contract = _deploy_registered(direct_vm, direct_deploy, fixture)
+    assert _submit(contract, fixture)["verdict"] == "ACCEPT"
+
+    _, _, validator_fn = direct_vm._captured_validators[-1]
+    nondet = validator_fn.__globals__["gl"].nondet
+
+    def technical_failure(*args, **kwargs):
+        raise RuntimeError("validator evaluation unavailable")
+
+    monkeypatch.setattr(nondet, "exec_prompt", technical_failure)
+    assert direct_vm.run_validator(leader_result=valid_result) is False
 
 
 def test_direct_malformed_evaluator_output_fails_closed(direct_vm, direct_deploy):

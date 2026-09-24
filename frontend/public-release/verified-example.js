@@ -1,6 +1,6 @@
 window.PROOFLINE_VERIFIED_EXAMPLE = Object.freeze({
-  job: "browser-1789906301756",
-  transaction: "0xa34586931cebe63f1392c3ea0233a21e406940d12157b78bc3ecec976be50c78",
+  job: "m4-source-proof-20260923234637-b465c5d2",
+  transaction: "0x45943fce5c710c091f6c93c9c18549d548fea12a48a2b613fe66a05125bd2d36",
 });
 
 window.fetchProoflineVerifiedExample = async function fetchProoflineVerifiedExample() {

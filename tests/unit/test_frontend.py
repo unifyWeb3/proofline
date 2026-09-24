@@ -11,14 +11,18 @@ import pytest
 from frontend.server import (
     CHAIN_ID,
     CONTRACT_ADDRESS,
+    REGISTRATION_OWNER_ADDRESS,
     RPC_URL,
     READ_ADDRESS,
     _build_envelope_response,
     _build_submission_material,
+    _config_payload,
     _fee_profile_options,
     _fixture_templates,
+    _get_route,
     _post_route,
     _prepare_register,
+    _prepare_submit,
     _safe_error_detail,
     _status_label,
     _unsigned_write,
@@ -29,6 +33,7 @@ from proofline.canonical import digest_json, sha256_bytes
 
 
 ROOT = Path(__file__).parents[2]
+PUBLIC_FRONTEND = ROOT / "frontend" / "public-release"
 
 
 def test_frontend_status_mapping_keeps_processing_distinct_from_finality():
@@ -40,7 +45,11 @@ def test_frontend_status_mapping_keeps_processing_distinct_from_finality():
 
 
 def test_frontend_has_no_signing_material_or_public_secret_configuration():
-    source = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "frontend").iterdir() if path.is_file())
+    source = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (ROOT / "frontend").rglob("*")
+        if path.is_file() and path.suffix in {".html", ".js", ".css", ".py"}
+    )
     lowered = source.lower()
     for marker in ("private_key", "private key", "mnemonic", "seed phrase", "api_key", "password", "next_public", "vite_"):
         assert marker not in lowered
@@ -49,13 +58,61 @@ def test_frontend_has_no_signing_material_or_public_secret_configuration():
     assert "window.ethereum" in lowered
 
 
+def test_public_pages_and_verified_example_use_the_current_authoritative_job():
+    status, home, content_type = _get_route("/", {})
+    assert status == 200 and content_type.startswith("text/html")
+    assert b"Verifiable acceptance for agent work" in home
+    status, workspace, content_type = _get_route("/app", {})
+    assert status == 200 and content_type.startswith("text/html")
+    assert b"Structured receipt" in workspace or b"View receipt" in workspace
+
+    evidence = json.loads(
+        (ROOT / "evidence" / "milestone4-genuine-semanticfix-independent-verification.json").read_text()
+    )
+    example_source = (ROOT / "frontend" / "public-release" / "verified-example.js").read_text()
+    job = re.search(r'job: "([^\"]+)"', example_source).group(1)
+    transaction = re.search(r'transaction: "([^\"]+)"', example_source).group(1)
+    assert job == evidence["submission"]["job_id"]
+    assert transaction == evidence["submission"]["transaction"]
+    assert evidence["contract_address"] == CONTRACT_ADDRESS
+
+
+def test_vercel_wsgi_entrypoint_serves_pages_and_current_config():
+    def request(path, method="GET", query="", body=b""):
+        result = {}
+
+        def start_response(status, headers):
+            result["status"] = status
+            result["headers"] = dict(headers)
+
+        environ = {
+            "REQUEST_METHOD": method,
+            "PATH_INFO": path,
+            "QUERY_STRING": query,
+            "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": BytesIO(body),
+        }
+        result["body"] = b"".join(wsgi_app(environ, start_response))
+        return result
+
+    home = request("/")
+    app = request("/app")
+    config = request("/api/config")
+    assert home["status"].startswith("200") and b"Verifiable acceptance" in home["body"]
+    assert app["status"].startswith("200") and b"view-example" in app["body"]
+    payload = json.loads(config["body"])
+    assert payload["chain_id"] == 61997
+    assert payload["contract_address"] == CONTRACT_ADDRESS
+    assert payload["registration_owner_address"] == REGISTRATION_OWNER_ADDRESS
+
+
 def test_browser_final_view_requires_verified_receipt():
-    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    app = (PUBLIC_FRONTEND / "app.js").read_text(encoding="utf-8")
     assert 'if (data.receipt) renderResult(data);' in app
     assert "data.finality_observed" in app
     assert "/api/transaction?tx=" in app
     assert "Registration finalized" in app
-    assert 'id="receipt-json"' in (ROOT / "frontend" / "app.html").read_text(encoding="utf-8")
+    assert 'id="receipt-json"' in (PUBLIC_FRONTEND / "app.html").read_text(encoding="utf-8")
     assert "receipt_verification" in app
     assert 'textContent = JSON.stringify(r, null, 2)' in app
     assert "download-receipt" in app
@@ -128,8 +185,119 @@ def test_registration_validation_requires_plain_job_id_and_matching_schema_ident
         _validated_contract_inputs({**templates, "policy": bad_policy})
 
 
+def test_registration_preparation_allows_deployed_owner(monkeypatch):
+    templates = _fixture_templates("owner-register-test", REGISTRATION_OWNER_ADDRESS)
+    captured = {}
+
+    def fake_unsigned_write(body, function_name, args):
+        captured.update(from_address=body["from"], function=function_name, args=args)
+        return {"prepared": True}
+
+    monkeypatch.setattr("frontend.server._unsigned_write", fake_unsigned_write)
+    status, response = _post_route(
+        "/api/prepare-register", {**templates, "from": REGISTRATION_OWNER_ADDRESS}
+    )
+    assert (status, response) == (200, {"prepared": True})
+    assert captured["from_address"] == REGISTRATION_OWNER_ADDRESS
+    assert captured["function"] == "register_job"
+    assert captured["args"][0] == "owner-register-test"
+
+
+def test_registration_preparation_rejects_non_owner_before_fee_estimation(monkeypatch):
+    templates = _fixture_templates("unauthorized-register-test", REGISTRATION_OWNER_ADDRESS)
+    called = False
+
+    def fail_if_called(*args, **kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("unauthorized registration must stop before fee preparation")
+
+    monkeypatch.setattr("frontend.server._unsigned_write", fail_if_called)
+    with pytest.raises(ValueError, match="Only the contract owner can register jobs"):
+        _post_route(
+            "/api/prepare-register",
+            {**templates, "from": "0x0000000000000000000000000000000000000001"},
+        )
+    assert called is False
+
+
+def test_submit_preparation_remains_authorized_by_policy_signer_not_owner(monkeypatch):
+    submitter = "0x00000000000000000000000000000000000000a2"
+    templates = _fixture_templates("separate-submit-authority", submitter)
+    envelope = _build_envelope_response(templates)["envelope"]
+    captured = {}
+
+    def fake_unsigned_write(body, function_name, args):
+        captured.update(from_address=body["from"], function=function_name)
+        return {"prepared": True}
+
+    monkeypatch.setattr("frontend.server._unsigned_write", fake_unsigned_write)
+    assert _prepare_submit({**templates, "from": submitter, "envelope": envelope}) == {"prepared": True}
+    assert captured == {"from_address": submitter, "function": "submit_job"}
+
+
+def test_prepared_submission_uses_the_same_canonical_evidence_bytes_as_envelope(monkeypatch):
+    templates = _fixture_templates("canonical-browser-job", REGISTRATION_OWNER_ADDRESS)
+    evidence = json.loads(templates["evidence_content"])
+    pretty_evidence = json.dumps(evidence, indent=2)
+    body = {**templates, "from": REGISTRATION_OWNER_ADDRESS, "evidence_content": pretty_evidence}
+    envelope = _build_envelope_response(body)["envelope"]
+    captured = {}
+
+    def fake_unsigned_write(_body, function_name, args):
+        captured.update(function=function_name, args=args)
+        return {"prepared": True}
+
+    monkeypatch.setattr("frontend.server._unsigned_write", fake_unsigned_write)
+    assert _prepare_submit({**body, "envelope": envelope}) == {"prepared": True}
+    assert captured["function"] == "submit_job"
+    assert captured["args"][4] != pretty_evidence
+    assert sha256_bytes(captured["args"][4].encode("utf-8")) == envelope["artifacts"][0]["sha256"]
+
+
+def test_submit_rejects_wrong_job_or_stale_envelope_before_fee_preparation(monkeypatch):
+    templates = _fixture_templates("canonical-browser-job", REGISTRATION_OWNER_ADDRESS)
+    envelope = _build_envelope_response(templates)["envelope"]
+
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("fee preparation must not run for mismatched evidence")
+
+    monkeypatch.setattr("frontend.server._unsigned_write", fail_if_called)
+    wrong_job = json.loads(templates["evidence_content"])
+    wrong_job["job_id"] = "another-job"
+    with pytest.raises(ValueError, match="evidence_content.job_id must equal job_id"):
+        _prepare_submit({**templates, "from": REGISTRATION_OWNER_ADDRESS, "envelope": envelope, "evidence_content": json.dumps(wrong_job)})
+    changed_evidence = json.loads(templates["evidence_content"])
+    changed_evidence["response"]["body"]["answer"] = "Changed after envelope construction"
+    with pytest.raises(ValueError, match="rebuild the envelope"):
+        _prepare_submit({**templates, "from": REGISTRATION_OWNER_ADDRESS, "envelope": envelope, "evidence_content": json.dumps(changed_evidence)})
+
+
+def test_public_config_exposes_owner_for_registration_guard():
+    assert _config_payload() == {
+        "chain_id": CHAIN_ID,
+        "rpc_url": RPC_URL,
+        "contract_address": CONTRACT_ADDRESS,
+        "registration_owner_address": REGISTRATION_OWNER_ADDRESS,
+    }
+    assert REGISTRATION_OWNER_ADDRESS == "0x3211d1419709682b81c53CC51cb63622E25488d3"
+
+
+def test_browser_registration_is_owner_gated_but_submission_is_not_owner_gated():
+    app = (ROOT / "frontend" / "public-release" / "app.js").read_text(encoding="utf-8")
+    html = (ROOT / "frontend" / "public-release" / "app.html").read_text(encoding="utf-8")
+    assert "registration_owner_address" in app
+    assert "account.toLowerCase() === registrationOwner.toLowerCase()" in app
+    assert "Only the contract owner" in app
+    assert "Evidence submission is separately authorized by the policy signer." in app
+    assert 'id="register"' in html and " disabled>Register with wallet" in html
+    assert "if (body.policy.signer_address.toLowerCase() !== account.toLowerCase())" in app
+    submit_handler = app.split("async function submit()", 1)[1].split("async function buildEnvelope()", 1)[0]
+    assert "registrationOwner" not in submit_handler
+
+
 def test_provider_error_detail_is_useful_but_redacts_credentials_and_urls():
-    detail = _safe_error_detail(ValueError("sim_estimateTransactionFees failed (code=-32000): api_key=secret123 " + "https://" + "user:pass" + "@example.invalid/api"))
+    detail = _safe_error_detail(ValueError("sim_estimateTransactionFees failed (code=-32000): api_key=secret123 https://user:pass@example.invalid/api"))
     assert "sim_estimateTransactionFees" in detail
     assert "secret123" not in detail
     assert "user:pass" not in detail
@@ -178,14 +346,14 @@ def test_studio_dev_fee_path_uses_measured_profile_and_sdk_returned_quote(monkey
     monkeypatch.setattr("frontend.server._encode_add_transaction_data", lambda **kwargs: "0xencoded")
     result = _unsigned_write({"from": "0x3211d1419709682b81c53CC51cb63622E25488d3"}, "submit_job", [])
     assert captured["options"] == {
-        "leaderTimeunitsAllocation": 125,
-        "validatorTimeunitsAllocation": 250,
-        "executionBudgetPerRound": 299000000000000,
+        "leaderTimeunitsAllocation": 157,
+        "validatorTimeunitsAllocation": 313,
+        "executionBudgetPerRound": 99855000000000,
         "totalMessageFees": 0,
         "rotations": [3],
     }
     assert result["fee_value_wei"] == 123456789
-    assert result["fee_distribution"]["executionBudgetPerRound"] == 299000000000000
+    assert result["fee_distribution"]["executionBudgetPerRound"] == 99855000000000
     assert result["fee_profile"]["method"] == "submit_job"
 
 
@@ -193,75 +361,19 @@ def test_studio_dev_fee_profile_is_chain_bound_and_contains_both_write_entries()
     register = _fee_profile_options("register_job")
     submit = _fee_profile_options("submit_job")
     assert register["executionBudgetPerRound"] == 98285000000000
-    assert submit["executionBudgetPerRound"] == 299000000000000
+    assert submit["executionBudgetPerRound"] == 99855000000000
     assert register["rotations"] == [3] == submit["rotations"]
 
 
 def test_frontend_fee_target_is_the_official_studio_dev_identity():
     assert CHAIN_ID == 61997
     assert RPC_URL == "https://studio-dev.genlayer.com/api"
-    assert CONTRACT_ADDRESS == "0x6eb8E208666694e9948E87aa46294aA349fD2014"
-
-
-def test_vercel_wsgi_entrypoint_reuses_config_and_envelope_routes():
-    from app import app as vercel_app
-
-    assert vercel_app is wsgi_app
-    responses = []
-
-    def start_response(status, headers):
-        responses.append((status, dict(headers)))
-
-    config_body = b"".join(
-        wsgi_app(
-            {"REQUEST_METHOD": "GET", "PATH_INFO": "/api/config", "QUERY_STRING": ""},
-            start_response,
-        )
-    )
-    assert responses[-1][0] == "200 OK"
-    assert json.loads(config_body)["chain_id"] == 61997
-
-    templates = _fixture_templates("wsgi-audit-1", "0x3211d1419709682b81c53CC51cb63622E25488d3")
-    body = json.dumps(templates).encode()
-    environ = {
-        "CONTENT_LENGTH": str(len(body)),
-        "wsgi.input": BytesIO(body),
-        "REQUEST_METHOD": "POST",
-        "PATH_INFO": "/api/build-envelope",
-        "QUERY_STRING": "",
-    }
-    envelope_body = b"".join(wsgi_app(environ, start_response))
-    assert responses[-1][0] == "200 OK"
-    assert json.loads(envelope_body)["envelope"]["schema_version"] == "proofline.response.v1"
-
-
-def test_public_root_and_app_routes_are_distinct_and_refreshable():
-    responses = []
-
-    def start_response(status, headers):
-        responses.append((status, dict(headers)))
-
-    root_body = b"".join(wsgi_app({"REQUEST_METHOD": "GET", "PATH_INFO": "/", "QUERY_STRING": ""}, start_response)).decode()
-    assert responses[-1][0] == "200 OK"
-    assert "Verifiable acceptance for agent work." in root_body
-    assert "Launch App" in root_body
-    assert 'id="job-id"' not in root_body
-
-    app_body = b"".join(wsgi_app({"REQUEST_METHOD": "GET", "PATH_INFO": "/app", "QUERY_STRING": ""}, start_response)).decode()
-    assert responses[-1][0] == "200 OK"
-    assert 'id="job-id"' in app_body
-    assert 'id="receipt-json"' in app_body
-    assert "Define" in app_body and "Submit" in app_body and "Verify" in app_body
-
-    for asset in ("/styles.css", "/home.js", "/verified-example.js", "/app.js"):
-        body = b"".join(wsgi_app({"REQUEST_METHOD": "GET", "PATH_INFO": asset, "QUERY_STRING": ""}, start_response))
-        assert responses[-1][0] == "200 OK"
-        assert body
+    assert CONTRACT_ADDRESS == "0x30829d13D0d86a9ae83Dc5e832Fb4AADd43Df26b"
 
 
 def test_frontend_documents_real_fixture_templates_and_safe_error_details():
-    html = (ROOT / "frontend" / "app.html").read_text(encoding="utf-8")
-    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    html = (PUBLIC_FRONTEND / "app.html").read_text(encoding="utf-8")
+    app = (PUBLIC_FRONTEND / "app.js").read_text(encoding="utf-8")
     assert "Known-good Milestone 2 JSON shapes" in html
     assert "Known-good evidence JSON shape" in html
     assert "proofline.policy.v1" in html

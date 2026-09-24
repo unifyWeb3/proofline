@@ -1,0 +1,99 @@
+{
+  "schema_version": "proofline.browser-verification.v1",
+  "verification_date": "2026-09-24",
+  "network": "Studio Next",
+  "chain_id": 61997,
+  "canonical_rpc": "https://studio-dev.genlayer.com/api",
+  "production_url": "https://proofline-nu.vercel.app",
+  "contract": {
+    "address": "0x30829d13D0d86a9ae83Dc5e832Fb4AADd43Df26b",
+    "deployment_transaction": "0x015e6839ddaec1cd6f6ae9c8ae4d060da293b377de7f2a8e655588bc42c6049d",
+    "source_sha256": "6a4e8f7738a281887616f6f7d1004158c2b0b5fc0db88c413f45ed71197fdbab",
+    "registration_owner": "0x3211d1419709682b81c53CC51cb63622E25488d3"
+  },
+  "browser_run": {
+    "job_id": "browser-1790227078107",
+    "wallet_flow_performed_by": "user",
+    "wallet_prompt_witnessed_by_verifier": false,
+    "registration_transaction": "0xc7b4c6552e0d434515950bdaa799f30f59569d72b2d38e0338ac8fde41b61c96",
+    "submission_transaction": "0x9b071b100e011cb13a2f0056e56257c933bfa172457e05271275cb51180d26db"
+  },
+  "registration": {
+    "method": "register_job",
+    "job_id": "browser-1790227078107",
+    "contract_address": "0x30829d13D0d86a9ae83Dc5e832Fb4AADd43Df26b",
+    "sender": "0x3211d1419709682b81c53CC51cb63622E25488d3",
+    "protocol_state": "FINALIZED",
+    "execution_result": "FINISHED_WITH_RETURN",
+    "consensus_result": "MAJORITY_AGREE"
+  },
+  "submission": {
+    "method": "submit_job",
+    "job_id": "browser-1790227078107",
+    "contract_address": "0x30829d13D0d86a9ae83Dc5e832Fb4AADd43Df26b",
+    "sender": "0x3211d1419709682b81c53CC51cb63622E25488d3",
+    "protocol_state": "FINALIZED",
+    "execution_result": "FINISHED_WITH_RETURN",
+    "consensus_result": "MAJORITY_AGREE",
+    "adjudication_mode": "SEMANTIC",
+    "evaluation_invoked": true
+  },
+  "canonical_checks": {
+    "registration_and_submission_target_same_contract": true,
+    "registration_and_submission_job_id_match": true,
+    "registration_and_submission_policy_match": true,
+    "registration_and_submission_agreement_match": true,
+    "submitted_evidence_bytes_match_envelope_artifact_sha256": true,
+    "request_and_response_hashes_match_submitted_evidence": true,
+    "policy_and_agreement_digests_match_final_readback": true,
+    "evidence_digest_matches_final_readback": true,
+    "decision_effect_matches_latest_final": true
+  },
+  "digests": {
+    "evidence_content_sha256": "sha256:f9bc3897793c3247ee207bc25384ad9f657a74d3369afa8b2646b99125fa6402",
+    "policy_digest": "sha256:fc6e916aeb8b929597a8d90dfa32d98169e3f5c626dece9ee728572eee59b887",
+    "agreement_digest": "sha256:1f9a006cbe2ae3bbce17912752007b93e5c31e080417f3e79cc1eaed1dc35012",
+    "decision_evidence_digest": "sha256:7294cb873117929506587adc19c3deec0d6088d00c27aaf452d56e36a6eab89d",
+    "decision_digest": "sha256:c1dea2b97956ac766c464e0cb05adbb990c17e79d240ebe6a5e04d183f55a6df"
+  },
+  "latest_final": {
+    "read_variant": "LATEST_FINAL",
+    "job_id": "browser-1790227078107",
+    "contract_address": "0x30829d13D0d86a9ae83Dc5e832Fb4AADd43Df26b",
+    "chain_id": 61997,
+    "protocol_state": "FINALIZED",
+    "execution_result": "FINISHED_WITH_RETURN",
+    "consensus_result": "MAJORITY_AGREE",
+    "verdict": "ACCEPT",
+    "reason_code": "CRITERION_MET",
+    "decision_digest_recomputed_and_matched": true
+  },
+  "finalization": {
+    "source": "consensus_history.current_monitoring.FINALIZED",
+    "authoritative_timestamp": 1790227352.8684402,
+    "receipt_timestamp_seconds": 1790227352
+  },
+  "receipt": {
+    "schema_version": "proofline.receipt.v1",
+    "verification": "PASSED",
+    "transaction_reference": "0x9b071b100e011cb13a2f0056e56257c933bfa172457e05271275cb51180d26db",
+    "receipt_digest": "sha256:8cf7c05498474cad1a467bcc205ce3a3289d8c85d405e07c1d78ddf7d91876e4",
+    "provenance_binding": "producing submit_job transaction, expected contract, job, calldata/effect, finalized decision, and LATEST_FINAL digest"
+  },
+  "local_adapter": {
+    "applied": true,
+    "signal": "RELEASE_READY",
+    "receipt_digest": "sha256:8cf7c05498474cad1a467bcc205ce3a3289d8c85d405e07c1d78ddf7d91876e4",
+    "meaning": "readiness only; not settlement or funds movement"
+  },
+  "verification_sources": [
+    "read-only Production API transaction, lifecycle, and LATEST_FINAL routes",
+    "read-only Studio Next RC SDK transaction/calldata and LATEST_FINAL queries"
+  ],
+  "publication_boundary": {
+    "raw_evidence_bytes_included": false,
+    "wallet_signature_or_private_key_included": false,
+    "transaction_broadcast_during_publication": false,
+    "committee_level_valid_disagreement_observed": false
+  }
+}

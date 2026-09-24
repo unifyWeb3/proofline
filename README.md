@@ -1,125 +1,69 @@
 # Proofline
 
-[Live app](https://proofline-nu.vercel.app) · [GitHub](https://github.com/unifyWeb3/proofline)
+**Verifiable acceptance for agent work.** Define what “done” means, submit the
+completed work, and get a GenLayer-finalized verdict with a receipt bound to the
+transaction that produced it.
 
-Proofline turns policy, agreement, and evidence into a finalized GenLayer
-decision that anyone can verify. It produces a provenance-bound receipt and a
-clear LocalAdapter readiness signal.
+[Launch Proofline](https://proofline-nu.vercel.app) · [GitHub](https://github.com/unifyWeb3/proofline)
 
-The public app is live on Vercel and uses Studio Next chain `61997` with the
-deployed contract `0x6eb8E208666694e9948E87aa46294aA349fD2014`.
+## How it works
 
-## What it solves
+1. The contract owner registers a job’s policy and agreement.
+2. The authorized submitter sends the request and completed work as evidence.
+3. GenLayer evaluates the submission and reaches consensus.
+4. Proofline reads the authoritative finalized result, verifies its producing
+   transaction, and constructs a `proofline.receipt.v1`.
+5. LocalAdapter reports whether the result is ready for a downstream policy.
 
-Applications often need a decision that can be checked later, rather than a
-local boolean or an opaque model response. Proofline binds policy, agreement,
-evidence, evaluator output, protocol finality, and the producing transaction
-into one auditable result.
+The latest verified browser run returned **ACCEPT · CRITERION_MET** for job
+`browser-1790227078107`. Its transactions finalized on Studio Next with
+`FINISHED_WITH_RETURN / MAJORITY_AGREE`; the receipt passed verification and
+LocalAdapter returned `RELEASE_READY`. This is a readiness signal, not evidence
+of settlement or funds movement. See the
+[sanitized run record](evidence/milestone4-browser-verification-20260924.json).
 
-## Lifecycle
+## Verified deployment
 
-1. Register a job with the exact policy and agreement.
-2. Submit a canonical evidence envelope.
-3. GenLayer executes the contract and reaches consensus.
-4. Read the finalized result through `LATEST_FINAL`.
-5. Construct `proofline.receipt.v1` only after successful execution and finality.
-6. Verify the receipt and pass its verdict to `LocalAdapter`.
+- App: <https://proofline-nu.vercel.app>
+- Network: Studio Next, chain `61997`
+- Contract: `0x30829d13D0d86a9ae83Dc5e832Fb4AADd43Df26b`
+- RPC: `https://studio-dev.genlayer.com/api`
 
-A technical execution failure remains a technical failure. It is not converted
-into a semantic rejection.
+## Run locally
 
-## Architecture
-
-- `contracts/proofline.py` contains the GenLayer intelligent contract.
-- `proofline/` contains canonical schemas, hashing, lifecycle observation,
-  receipt construction, and the idempotent LocalAdapter.
-- `frontend/` provides a small browser flow using an injected wallet provider.
-  Signing material never enters the browser or frontend configuration.
-- `tests/` contains unit and GenLayer direct-mode coverage.
-
-The frontend uses the matching Python RC client for fee preparation, lifecycle
-observation, final readback, receipt verification, and adapter readiness. The
-browser only authorizes unsigned transactions through `window.ethereum`.
-
-## GenLayer integration
-
-The verified hosted target is Studio Next chain `61997` using the canonical RPC
-`https://studio-dev.genlayer.com/api`. The deployed Proofline contract is
-`0x6eb8E208666694e9948E87aa46294aA349fD2014`.
-
-The public evidence records a successful semantic run with
-`FINISHED_WITH_RETURN`, `MAJORITY_AGREE`, `FINALIZED`, an `ACCEPT` decision, a
-matching `LATEST_FINAL` readback, and a producing-transaction-bound receipt.
-
-## Receipts and LocalAdapter
-
-`proofline.receipt.v1` is created only from verified lifecycle observation. Its
-provenance binds the producing `submit_job` transaction to the expected
-contract, job, transaction effect, finalized decision, and canonical decision
-digest. `LocalAdapter` re-observes hosted finality, is idempotent on repeated
-delivery, and returns readiness signals such as `RELEASE_READY` or `HOLD`.
-These signals do not imply settlement, custody, payments, or funds movement.
-
-## Local setup
-
-Use Python 3.12 or newer. For the connected frontend and Vercel runtime,
-install the matching Consensus v0.6 RC client:
-
-```bash
-python -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-```
-
-For the historical stable direct-test lane, install:
-
-```bash
-pip install -r requirements-direct.txt
-```
-
-For the full Consensus v0.6 RC hosted/readback and test path, install the pinned RC lane:
+Python 3.12+ and the Consensus v0.6 RC toolchain are used by the connected API
+and direct contract tests:
 
 ```bash
 python -m venv .venv-rc
 . .venv-rc/bin/activate
 pip install -r requirements-rc.txt
-```
-
-The frontend server expects the RC client and serves the browser surface on port
-8787:
-
-```bash
-. .venv-rc/bin/activate
 python frontend/server.py --port 8787
 ```
 
-Vercel loads the same stateless API through the root `app.py` WSGI entrypoint.
-The API reads authoritative lifecycle state from Studio Next on each request and
-does not persist transaction or wallet state locally.
+Open `http://localhost:8787`. The API is stateless between requests. Browser
+writes are authorized by an injected wallet; the server prepares unsigned
+transactions and never receives a private key.
 
-User signing is performed by an injected wallet. No private key belongs in
-`.env`, frontend source, browser storage, or public configuration.
-
-## Tests
+Run tests with:
 
 ```bash
 pytest -q tests/unit
-pytest -q tests/direct
+GENVM_VERSION=v0.6.0-rc5 pytest -q tests/direct
 python -m compileall -q proofline frontend tests
 python -m pip check
 ```
 
-The completed project verification recorded 49 unit tests and 35 direct tests
-passing, plus compile, dependency, JavaScript syntax, and frontend security
-checks.
+## Architecture and limits
 
-## Verified status and limitations
+`contracts/` contains the GenLayer contract; `proofline/` implements canonical
+schemas, lifecycle checks, receipts, and LocalAdapter; `frontend/` contains the
+static public site, verification workspace, and Python API. See
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
+[`docs/API.md`](docs/API.md), and the
+[verification record index](evidence/README.md).
 
-Proofline Milestones 1–3 are complete. The hosted and browser verification
-artifacts are under `evidence/`. The live browser flow has verified wallet
-connection, job registration and submission, finalized readback, receipt
-verification, and LocalAdapter readiness on Studio Next. Studio Next remains a
-development preview; this project does not claim mainnet deployment, custody,
-payments, settlement, or release hardening.
-
-No license has been selected for this release yet.
+Studio Next is a development network. No mainnet deployment, payment, custody,
+or settlement is claimed. Direct tests exercise the pinned validator comparison
+but do not prove committee-level disagreement; none was observed in the hosted
+runs. A project license has not been selected.

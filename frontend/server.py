@@ -11,6 +11,7 @@ import json
 import re
 import sys
 from datetime import datetime, timezone
+from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
@@ -35,13 +36,18 @@ from proofline.lifecycle import GenLayerLifecycleClient  # noqa: E402
 from proofline.receipt import ProoflineDecision, SUCCESSFUL_EXECUTION_RESULT  # noqa: E402
 from proofline.schemas import AcceptancePolicy, Agreement  # noqa: E402
 
-CONTRACT_ADDRESS = "0x6eb8E208666694e9948E87aa46294aA349fD2014"
+CONTRACT_ADDRESS = "0x30829d13D0d86a9ae83Dc5e832Fb4AADd43Df26b"
 CHAIN_ID = 61997
+# The corrected deployment transaction's finalized sender is the owner
+# initialized onchain by the exact contract constructor. This is a preparation
+# guard only; the contract remains the authority.
+REGISTRATION_OWNER_ADDRESS = "0x3211d1419709682b81c53CC51cb63622E25488d3"
 RPC_URL = studio_devnet.rpc_urls["default"]["http"][0]
 if studio_devnet.id != CHAIN_ID or RPC_URL != "https://studio-dev.genlayer.com/api":
     raise RuntimeError("installed RC Studio-dev chain definition does not match Proofline target")
-FEE_PROFILE_PATH = ROOT / "evidence" / "fee-profile-milestone2-correction.json"
+FEE_PROFILE_PATH = ROOT / "evidence" / "fee-profile-milestone4-semanticfix.json"
 FRONTEND_ROOT = Path(__file__).resolve().parent
+PUBLIC_FRONTEND_ROOT = FRONTEND_ROOT / "public-release"
 MAX_BODY_BYTES = 512 * 1024
 READ_ADDRESS = "0x0000000000000000000000000000000000000001"
 JOB_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -206,6 +212,8 @@ def _build_submission_material(body: dict[str, Any]) -> dict[str, Any]:
         raise BadRequest("evidence_content must be a JSON object")
     if not isinstance(evidence.get("request"), dict) or not isinstance(evidence.get("response"), dict):
         raise BadRequest("evidence_content must contain request and response objects")
+    if "job_id" in evidence and evidence["job_id"] != job_id:
+        raise BadRequest("evidence_content.job_id must equal job_id")
     policy_digest = digest_json(policy)
     agreement_digest = digest_json({key: value for key, value in agreement.items() if key != "agreement_digest"})
     if agreement.get("agreement_digest") not in (None, agreement_digest):
@@ -299,6 +307,12 @@ def _unsigned_write(body: dict[str, Any], function_name: str, args: list[Any]) -
 
 
 def _prepare_register(body: dict[str, Any]) -> dict[str, Any]:
+    sender = _account(_required(body, "from"))
+    # A caller-supplied address is not proof of wallet control. This avoids
+    # fee preparation for known unauthorized callers; register_job's onchain
+    # owner check is still the final authority after wallet signing.
+    if sender.address.lower() != REGISTRATION_OWNER_ADDRESS.lower():
+        raise BadRequest("Only the contract owner can register jobs on this deployed Proofline contract.")
     job_id, policy, agreement = _validated_contract_inputs(body)
     return _unsigned_write(
         body,
@@ -307,23 +321,39 @@ def _prepare_register(body: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def _config_payload() -> dict[str, Any]:
+    return {
+        "chain_id": CHAIN_ID,
+        "rpc_url": RPC_URL,
+        "contract_address": CONTRACT_ADDRESS,
+        "registration_owner_address": REGISTRATION_OWNER_ADDRESS,
+    }
+
+
 def _prepare_submit(body: dict[str, Any]) -> dict[str, Any]:
     job_id, policy, agreement = _validated_contract_inputs(body)
     sender = _account(_required(body, "from"))
     if sender.address.lower() != policy["signer_address"].lower():
         raise BadRequest("from must match policy.signer_address for submit_job")
+    material = _build_submission_material(body)
+    envelope = strict_json_loads(_json_object(_required(body, "envelope"), "envelope"))
+    expected = material["envelope"]
+    for field in ("schema_version", "job_id", "policy_version", "agreement_digest", "policy_digest", "artifacts", "deadline", "request_hash", "response_hash", "signer"):
+        if envelope.get(field) != expected[field]:
+            raise BadRequest(f"envelope.{field} does not match canonical submission material; rebuild the envelope")
     args = [
         job_id,
         _json_object(policy, "policy"),
         _json_object(agreement, "agreement"),
-        _json_object(_required(body, "envelope"), "envelope"),
-        _required(body, "evidence_content"),
+        _json_object(envelope, "envelope"),
+        material["evidence_content"],
     ]
     return _unsigned_write(body, "submit_job", args)
 
 
 def _post_route(path: str, body: dict[str, Any]) -> tuple[int, Any]:
     """Dispatch POST API paths independently of the HTTP transport."""
+    path = urlparse(path).path
     if path == "/api/prepare-register":
         return 200, _prepare_register(body)
     if path == "/api/prepare-submit":
@@ -334,9 +364,9 @@ def _post_route(path: str, body: dict[str, Any]) -> tuple[int, Any]:
 
 
 def _get_route(path: str, query: dict[str, list[str]]) -> tuple[int, Any, str]:
-    """Dispatch GET paths independently of the HTTP transport."""
+    """Serve current public pages/assets and existing read-only API routes."""
     if path == "/api/config":
-        return 200, {"chain_id": CHAIN_ID, "rpc_url": RPC_URL, "contract_address": CONTRACT_ADDRESS}, "application/json"
+        return 200, _config_payload(), "application/json"
     if path == "/api/templates":
         return 200, _fixture_templates(query["job"][0], query["signer"][0]), "application/json"
     if path == "/api/lifecycle":
@@ -345,81 +375,29 @@ def _get_route(path: str, query: dict[str, list[str]]) -> tuple[int, Any, str]:
         return 200, _transaction_response(query["tx"][0]), "application/json"
     if path == "/api/readback":
         return 200, _job_readback(query["job"][0], query["from"][0]), "application/json"
-    if path == "/" or path == "/index.html":
-        return 200, (FRONTEND_ROOT / "index.html").read_bytes(), "text/html; charset=utf-8"
-    if path == "/app":
-        return 200, (FRONTEND_ROOT / "app.html").read_bytes(), "text/html; charset=utf-8"
-    if path in {"/app.js", "/home.js", "/verified-example.js", "/styles.css"}:
-        asset = FRONTEND_ROOT / path.lstrip("/")
-        content_type = "text/javascript; charset=utf-8" if asset.suffix == ".js" else "text/css; charset=utf-8"
-        return 200, asset.read_bytes(), content_type
-    return 404, {"error": "not found"}, "application/json"
 
-
-def _parse_json_body(raw: bytes) -> dict[str, Any]:
-    if len(raw) > MAX_BODY_BYTES:
-        raise BadRequest("request body is too large")
+    if path in {"/", "/index.html"}:
+        file_path = PUBLIC_FRONTEND_ROOT / "index.html"
+        content_type = "text/html; charset=utf-8"
+    elif path in {"/app", "/app/", "/app.html"}:
+        file_path = PUBLIC_FRONTEND_ROOT / "app.html"
+        content_type = "text/html; charset=utf-8"
+    else:
+        static_assets = {
+            "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+            "/home.js": ("home.js", "text/javascript; charset=utf-8"),
+            "/verified-example.js": ("verified-example.js", "text/javascript; charset=utf-8"),
+            "/styles.css": ("styles.css", "text/css; charset=utf-8"),
+        }
+        asset = static_assets.get(path)
+        if asset is None:
+            return 404, {"error": "not found"}, "application/json"
+        file_name, content_type = asset
+        file_path = PUBLIC_FRONTEND_ROOT / file_name
     try:
-        value = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise BadRequest("request body must be JSON") from exc
-    if not isinstance(value, dict):
-        raise BadRequest("request body must be an object")
-    return value
-
-
-def _response_bytes(payload: Any) -> bytes:
-    return payload if isinstance(payload, bytes) else json.dumps(payload, ensure_ascii=False).encode("utf-8")
-
-
-def _status_reason(status: int) -> str:
-    return {200: "OK", 400: "Bad Request", 404: "Not Found", 405: "Method Not Allowed", 502: "Bad Gateway"}.get(
-        status, ""
-    )
-
-
-def wsgi_app(environ: dict[str, Any], start_response: Any) -> list[bytes]:
-    """Serve the same API and static assets through Vercel's WSGI entrypoint."""
-    method = environ.get("REQUEST_METHOD", "GET").upper()
-    path = environ.get("PATH_INFO", "/") or "/"
-    query = parse_qs(environ.get("QUERY_STRING", ""))
-    content_type = "application/json"
-    try:
-        if method == "GET":
-            status, payload, content_type = _get_route(path, query)
-        elif method == "POST":
-            try:
-                length = int(environ.get("CONTENT_LENGTH") or "0")
-            except ValueError as exc:
-                raise BadRequest("Content-Length must be an integer") from exc
-            if length < 0:
-                raise BadRequest("Content-Length must not be negative")
-            body = _parse_json_body(environ["wsgi.input"].read(length))
-            status, payload = _post_route(path, body)
-        else:
-            status, payload = 405, {"error": "method not allowed"}
-    except (BadRequest, KeyError, IndexError) as exc:
-        status, payload = 400, {"error": str(exc)}
-    except Exception as exc:  # technical boundary; no verdict is invented
-        if method == "POST":
-            status, payload = 502, {
-                "error": "provider or fee preparation error",
-                "error_type": type(exc).__name__,
-                "detail": _safe_error_detail(exc),
-            }
-        else:
-            status, payload = 502, {"error": f"provider or lifecycle error: {type(exc).__name__}"}
-
-    body = _response_bytes(payload)
-    start_response(
-        f"{status} {_status_reason(status)}",
-        [
-            ("Content-Type", content_type),
-            ("Content-Length", str(len(body))),
-            ("Cache-Control", "no-store"),
-        ],
-    )
-    return [body]
+        return 200, file_path.read_bytes(), content_type
+    except FileNotFoundError:
+        return 404, {"error": "not found"}, "application/json"
 
 
 def _status_label(snapshot: Any) -> str:
@@ -553,7 +531,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         try:
             body = self._body()
-            status, payload = _post_route(urlparse(self.path).path, body)
+            status, payload = _post_route(self.path, body)
             self._send(status, payload)
         except BadRequest as exc:
             self._send(400, {"error": str(exc)})
@@ -563,6 +541,54 @@ class Handler(BaseHTTPRequestHandler):
                 "error_type": type(exc).__name__,
                 "detail": _safe_error_detail(exc),
             })
+
+
+def wsgi_app(environ: dict[str, Any], start_response: Any) -> list[bytes]:
+    """Stateless WSGI adapter for Vercel; shares the local route dispatchers."""
+    method = environ.get("REQUEST_METHOD", "GET").upper()
+    path = environ.get("PATH_INFO", "/") or "/"
+    query = parse_qs(environ.get("QUERY_STRING", ""))
+    try:
+        if method == "GET":
+            status, payload, content_type = _get_route(path, query)
+        elif method == "POST":
+            length = int(environ.get("CONTENT_LENGTH") or 0)
+            if length > MAX_BODY_BYTES:
+                raise BadRequest("request body is too large")
+            raw_body = environ.get("wsgi.input").read(length) if length else b"{}"
+            try:
+                body = json.loads(raw_body)
+            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                raise BadRequest("request body must be JSON") from exc
+            if not isinstance(body, dict):
+                raise BadRequest("request body must be an object")
+            status, payload = _post_route(path, body)
+            content_type = "application/json"
+        else:
+            status, payload, content_type = 405, {"error": "method not allowed"}, "application/json"
+    except (BadRequest, KeyError, IndexError) as exc:
+        status, payload, content_type = 400, {"error": str(exc)}, "application/json"
+    except Exception as exc:
+        status, payload, content_type = 502, {
+            "error": "provider or fee preparation error" if method == "POST" else "provider or lifecycle error",
+            "error_type": type(exc).__name__,
+            "detail": _safe_error_detail(exc),
+        }, "application/json"
+
+    if isinstance(payload, bytes):
+        response_body = payload
+    else:
+        response_body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    phrase = HTTPStatus(status).phrase
+    headers = [
+        ("Content-Type", content_type),
+        ("Content-Length", str(len(response_body))),
+        ("Cache-Control", "no-store"),
+    ]
+    if status == 405:
+        headers.append(("Allow", "GET, POST"))
+    start_response(f"{status} {phrase}", headers)
+    return [response_body]
 
 
 def main() -> None:

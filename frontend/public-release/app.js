@@ -2,11 +2,16 @@
   const $ = (id) => document.getElementById(id);
   let account = null;
   let registrationHash = null;
+  let registrationJobId = null;
   let submitHash = null;
+  let submittedJobId = null;
   let pollTimer = null;
   let registrationTimer = null;
   let activeReceipt = null;
   let syncingEvidenceFields = false;
+  let registrationOwner = null;
+  let chainAuthorized = false;
+  let templatesLoaded = false;
 
   const provider = () => window.ethereum;
   const JOB_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
@@ -57,19 +62,68 @@
       const chain = await provider().request({ method: "eth_chainId" });
       const target = await config();
       const expected = `0x${target.chain_id.toString(16)}`;
-      if (chain.toLowerCase() !== expected.toLowerCase()) throw new Error(`Wallet is on the wrong chain. Switch to Studio Next · ${target.chain_id}.`);
-      await loadTemplates();
+      registrationOwner = target.registration_owner_address;
+      chainAuthorized = chain.toLowerCase() === expected.toLowerCase();
+      if (!chainAuthorized) throw new Error(`Wallet is on the wrong chain. Switch to Studio Next · ${target.chain_id}.`);
+      if (!templatesLoaded) {
+        await loadTemplates();
+        templatesLoaded = true;
+      }
       connectButton.textContent = `${account.slice(0, 7)}…${account.slice(-4)}`;
       connectButton.title = account;
       setNetwork(`Wallet connected · Studio Next · ${target.chain_id}`, true);
-      $("register").disabled = false;
-      setState($("register-state"), "Wallet connected. Registration awaits authorization.", "success", "The next step will open your wallet for approval.");
+      updateRegistrationGate();
     } catch (error) {
       connectButton.textContent = "Connect wallet";
+      updateRegistrationGate();
       throw error;
     } finally {
       connectButton.disabled = false;
     }
+  }
+
+  function updateRegistrationGate() {
+    const isOwner = Boolean(
+      account && chainAuthorized && registrationOwner &&
+      account.toLowerCase() === registrationOwner.toLowerCase()
+    );
+    $("register").disabled = !isOwner;
+    if (!account) {
+      setState($("register-state"), "Connect the contract owner wallet to register a job.", "muted");
+    } else if (!chainAuthorized) {
+      setState($("register-state"), "Switch the wallet to Studio Next · chain 61997 before registering.", "error");
+    } else if (!isOwner) {
+      setState(
+        $("register-state"),
+        "Only the contract owner can register jobs.",
+        "rejected",
+        "Evidence submission is separately authorized by the policy signer."
+      );
+    } else {
+      setState($("register-state"), "Contract owner connected. Registration awaits wallet authorization.", "success");
+    }
+  }
+
+  async function syncWalletContext(accounts = null) {
+    if (!provider()) return;
+    const activeAccounts = accounts || await provider().request({ method: "eth_accounts" });
+    account = activeAccounts[0] || null;
+    const [chain, target] = await Promise.all([
+      provider().request({ method: "eth_chainId" }),
+      config(),
+    ]);
+    registrationOwner = target.registration_owner_address;
+    chainAuthorized = chain.toLowerCase() === `0x${target.chain_id.toString(16)}`.toLowerCase();
+    if (account) {
+      $("connect").textContent = `${account.slice(0, 7)}…${account.slice(-4)}`;
+      $("connect").title = account;
+      setNetwork(`Wallet connected · Studio Next · ${target.chain_id}`, chainAuthorized);
+    } else {
+      $("connect").textContent = "Connect wallet";
+      $("connect").removeAttribute("title");
+      setNetwork(`Studio Next · ${target.chain_id}`, true);
+    }
+    updateRegistrationGate();
   }
 
   const jsonValue = (id) => {
@@ -173,15 +227,22 @@
   async function register() {
     const button = $("register");
     try {
+      if (!account || !chainAuthorized || !registrationOwner || account.toLowerCase() !== registrationOwner.toLowerCase()) {
+        throw new Error("Only the contract owner, connected to Studio Next · chain 61997, can register jobs.");
+      }
       button.disabled = true;
       const body = { from: account, ...validateInputs() };
       setState($("register-state"), "Preparing registration…", "muted", "Validating the policy and measured fee profile.");
       const prepared = await prepare("/api/prepare-register", body);
       registrationHash = await sendPrepared(prepared, $("register-state"));
+      registrationJobId = body.job_id;
       setState($("register-state"), `Registration submitted · ${registrationHash}`, "muted", "Registration finality is required before submission is enabled.");
       pollRegistration();
     } catch (error) {
-      button.disabled = false;
+      button.disabled = !(
+        account && chainAuthorized && registrationOwner &&
+        account.toLowerCase() === registrationOwner.toLowerCase()
+      );
       setState($("register-state"), error.message, "error", "No transaction was broadcast until preparation succeeded.");
     }
   }
@@ -214,16 +275,22 @@
   }
 
   function buttonReady(button) {
-    button.disabled = false;
+    if (button.id === "register") {
+      updateRegistrationGate();
+    } else {
+      button.disabled = false;
+    }
   }
 
   async function submit() {
     try {
       const body = { from: account, ...validateInputs(), envelope: jsonValue("envelope"), evidence_content: $("evidence-content").value };
+      if (!registrationJobId || body.job_id !== registrationJobId) throw new Error("Job ID changed since registration. Restore the registered Job ID before submitting.");
       if (body.policy.signer_address.toLowerCase() !== account.toLowerCase()) throw new Error("Submit wallet must match policy.signer_address");
       setState($("submit-state"), "Preparing submission…", "muted", "Validating the canonical evidence package and measured fee profile.");
       const prepared = await prepare("/api/prepare-submit", body);
       submitHash = await sendPrepared(prepared, $("submit-state"));
+      submittedJobId = body.job_id;
       setState($("submit-state"), `Submission submitted · ${submitHash}`, "muted", "Proofline is now observing the protocol lifecycle.");
       setStepNav("verify", true);
       updateTimeline({ transaction_hash: submitHash, state: "pending" });
@@ -256,7 +323,7 @@
     if (step === "submitted") return data.transaction_hash ? "Transaction observed" : "Waiting for a transaction";
     if (step === "evaluating") return data.execution_result && data.execution_result !== "NOT_STARTED" ? formatLabel(data.execution_result) : "Waiting for evaluation";
     if (step === "consensus") return data.consensus_result ? formatLabel(data.consensus_result) : data.protocol_status ? formatLabel(data.protocol_status) : "Waiting for consensus";
-    if (step === "finalized") return data.finality_observed ? "Authoritative result available" : "Waiting for finality";
+    if (step === "finalized") return data.finality_observed ? (data.state === "technical_error" ? "Finalized; result verification failed" : "Authoritative result available") : "Waiting for finality";
     return "";
   }
 
@@ -279,7 +346,7 @@
   }
 
   function lifecycleState(data) {
-    if (data.state === "technical_error") return ["Technical error", "error", "No semantic verdict was produced. Inspect the provider detail and retry if appropriate."];
+    if (data.state === "technical_error") return ["Technical error", "error", data.error || "Result verification failed. Check the submitted job and transaction before retrying."];
     if (data.finality_observed && data.receipt) return [`Finalized · ${formatLabel(data.protocol_status)}`, "finalized", `${formatLabel(data.execution_result)} · ${formatLabel(data.consensus_result)}`];
     if (data.state === "consensus") return ["Consensus in progress", "muted", `${formatLabel(data.protocol_status)} · waiting for an authoritative final state`];
     if (data.state === "evaluating") return ["Evaluation in progress", "muted", "Proofline is waiting for an authoritative finalized result."];
@@ -290,7 +357,7 @@
     if (!submitHash) return;
     clearTimeout(pollTimer);
     try {
-      const job = encodeURIComponent($("job-id").value.trim());
+      const job = encodeURIComponent(submittedJobId);
       const response = await fetch(`/api/lifecycle?tx=${encodeURIComponent(submitHash)}&job=${job}`, { cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Lifecycle query failed");
@@ -394,6 +461,10 @@
   function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character])); }
 
   $("connect").addEventListener("click", () => connect().catch((error) => setState($("register-state"), error.message, "error", "No transaction was broadcast.")));
+  if (provider()?.on) {
+    provider().on("accountsChanged", (accounts) => syncWalletContext(accounts).catch((error) => setState($("register-state"), error.message, "error")));
+    provider().on("chainChanged", () => syncWalletContext().catch((error) => setState($("register-state"), error.message, "error")));
+  }
   $("register").addEventListener("click", register);
   $("build-envelope").addEventListener("click", buildEnvelope);
   $("submit").addEventListener("click", submit);
@@ -422,6 +493,10 @@
   });
   setStepNav("define");
   $("job-id").value = `browser-${Date.now()}`;
-  config().then((data) => setNetwork(`Studio Next · ${data.chain_id}`, true)).catch((error) => setNetwork(error.message, false));
+  config().then((data) => {
+    registrationOwner = data.registration_owner_address;
+    setNetwork(`Studio Next · ${data.chain_id}`, true);
+    updateRegistrationGate();
+  }).catch((error) => setNetwork(error.message, false));
   if (new URLSearchParams(window.location.search).get("example") === "verified") viewVerifiedExample();
 })();

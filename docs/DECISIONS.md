@@ -27,8 +27,9 @@
 9. `VERIFIED`: Direct mode proves leader execution, parsing, and state
    boundaries only. Hosted consensus, disagreement, appeal, and finality are
    `HOSTED_ONLY / NOT PROVEN BY DIRECT MODE`.
-10. `VERIFIED`: No deployment, wallet operation, private-key read, fee payment,
-    or hosted write is authorized in this session.
+10. `VERIFIED`: Browser signing is user-authorized through the injected wallet;
+    the server prepares unsigned writes and performs read-only verification.
+    Private keys and wallet signing material are not part of the application.
 11. `VERIFIED`: A hosted receipt requires `FINALIZED`,
     `FINISHED_WITH_RETURN`, matching chain/contract readback, and a true
     finalization observation timestamp; transaction creation time is not

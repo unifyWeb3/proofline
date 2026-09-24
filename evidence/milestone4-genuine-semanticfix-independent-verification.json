@@ -1,0 +1,153 @@
+{
+  "contract_address": "0x30829d13D0d86a9ae83Dc5e832Fb4AADd43Df26b",
+  "contract_schema_latest_final": "proofline.response.v1",
+  "deployment": {
+    "consensus_result": "MAJORITY_AGREE",
+    "execution_result": "FINISHED_WITH_RETURN",
+    "fee_observation": {
+      "consensus_result": "MAJORITY_AGREE",
+      "deposit": "100000000000010352",
+      "execution_consumed": "78628000000000",
+      "execution_result": "FINISHED_WITH_RETURN",
+      "fee_value": "100000000000010352",
+      "finalization_timestamp_source": "consensus_history.current_monitoring.FINALIZED",
+      "finalized_at": 1790207050,
+      "locked_prices": {
+        "genPerTimeUnit": "1",
+        "receiptGasPrice": "250000000",
+        "storageUnitPrice": "250000000"
+      },
+      "message_fees_consumed": "0",
+      "nonce": 229,
+      "primary_fee_spent": 78628000000823,
+      "protocol_status": "finalized",
+      "settlement_reason": "finalized",
+      "storage_fee_used": "0",
+      "timestamp_awaiting_finalization": 1790207020,
+      "total_refunded": "99921372000009529",
+      "transaction_reference": "0x015e6839ddaec1cd6f6ae9c8ae4d060da293b377de7f2a8e655588bc42c6049d"
+    },
+    "owner_matches_constructor_sender": true,
+    "protocol_status": "finalized",
+    "sender": "0x3211d1419709682b81c53CC51cb63622E25488d3",
+    "transaction": "0x015e6839ddaec1cd6f6ae9c8ae4d060da293b377de7f2a8e655588bc42c6049d"
+  },
+  "latest_final": {
+    "decision_digest_recomputed": "sha256:bf0bba5440d28449c2ca24e6844d89494a28e3072a2721ad5aa3482765cbfc39",
+    "decision_fields_match_hosted_record": true,
+    "matches_hosted_record": true,
+    "reason_code": "CRITERION_MET",
+    "verdict": "ACCEPT"
+  },
+  "local_adapter": {
+    "readiness": "RELEASE_READY",
+    "receipt_digest": "sha256:0fe6969c12bf195ebb85683526fbaee5cf4dc44f602f948a101b479c9d589302",
+    "repeat_delivery_idempotent": true,
+    "tampered_receipt_rejected": true
+  },
+  "network": {
+    "chain_id": 61997,
+    "rpc": "https://studio-dev.genlayer.com/api"
+  },
+  "observed_at": "2026-09-23T23:56:22.101485+00:00",
+  "provenance": {
+    "contract_address": "0x30829d13D0d86a9ae83Dc5e832Fb4AADd43Df26b",
+    "effect_matches_latest_final": true,
+    "job_id": "m4-source-proof-20260923234637-b465c5d2",
+    "method": "submit_job",
+    "producing_transaction": "0x45943fce5c710c091f6c93c9c18549d548fea12a48a2b613fe66a05125bd2d36",
+    "transaction_call_verified": true,
+    "transaction_effect_decision_digests": [
+      "sha256:bf0bba5440d28449c2ca24e6844d89494a28e3072a2721ad5aa3482765cbfc39"
+    ]
+  },
+  "receipt": {
+    "decision_digest": "sha256:bf0bba5440d28449c2ca24e6844d89494a28e3072a2721ad5aa3482765cbfc39",
+    "matches_saved_receipt": true,
+    "producing_transaction": "0x45943fce5c710c091f6c93c9c18549d548fea12a48a2b613fe66a05125bd2d36",
+    "receipt_digest": "sha256:0fe6969c12bf195ebb85683526fbaee5cf4dc44f602f948a101b479c9d589302",
+    "schema_version": "proofline.receipt.v1",
+    "verification": "PASSED"
+  },
+  "registration": {
+    "consensus_result": "MAJORITY_AGREE",
+    "execution_result": "FINISHED_WITH_RETURN",
+    "fee_observation": {
+      "consensus_result": "MAJORITY_AGREE",
+      "deposit": "393140000012941",
+      "execution_consumed": "78628000000000",
+      "execution_result": "FINISHED_WITH_RETURN",
+      "fee_value": 393140000012941,
+      "finalization_timestamp_source": "consensus_history.current_monitoring.FINALIZED",
+      "finalized_at": 1790207359,
+      "locked_prices": {
+        "genPerTimeUnit": "1",
+        "receiptGasPrice": "250000000",
+        "storageUnitPrice": "250000000"
+      },
+      "message_fees_consumed": "0",
+      "nonce": 230,
+      "primary_fee_spent": 78628000001029,
+      "protocol_status": "finalized",
+      "settlement_reason": "finalized",
+      "storage_fee_used": "0",
+      "timestamp_awaiting_finalization": 1790207329,
+      "total_refunded": 314512000011912,
+      "transaction_reference": "0x7ebf79c2f9559e9a6dca275d2ca3e63bc6d3e5cc2e00ff98f2efadbd039c707a"
+    },
+    "finalized_at": 1790207359,
+    "job_id": "m4-source-proof-20260923234637-b465c5d2",
+    "method": "register_job",
+    "protocol_status": "finalized",
+    "sender": "0x3211d1419709682b81c53CC51cb63622E25488d3",
+    "transaction": "0x7ebf79c2f9559e9a6dca275d2ca3e63bc6d3e5cc2e00ff98f2efadbd039c707a"
+  },
+  "schema_version": "proofline.milestone4.semanticfix-independent-verification.v1",
+  "source_sha256": "6a4e8f7738a281887616f6f7d1004158c2b0b5fc0db88c413f45ed71197fdbab",
+  "submission": {
+    "consensus_result": "MAJORITY_AGREE",
+    "execution_result": "FINISHED_WITH_RETURN",
+    "fee_observation": {
+      "consensus_result": "MAJORITY_AGREE",
+      "deposit": "402100000012941",
+      "execution_consumed": "79884000000000",
+      "execution_result": "FINISHED_WITH_RETURN",
+      "fee_value": 402100000012941,
+      "finalization_timestamp_source": "consensus_history.current_monitoring.FINALIZED",
+      "finalized_at": 1790207413,
+      "locked_prices": {
+        "genPerTimeUnit": "1",
+        "receiptGasPrice": "250000000",
+        "storageUnitPrice": "250000000"
+      },
+      "message_fees_consumed": "0",
+      "nonce": 231,
+      "primary_fee_spent": 79884000001029,
+      "protocol_status": "finalized",
+      "settlement_reason": "finalized",
+      "storage_fee_used": "0",
+      "timestamp_awaiting_finalization": 1790207383,
+      "total_refunded": 322216000011912,
+      "transaction_reference": "0x45943fce5c710c091f6c93c9c18549d548fea12a48a2b613fe66a05125bd2d36"
+    },
+    "finalization_timestamp_source": "consensus_history.current_monitoring.FINALIZED",
+    "finalized_at": 1790207413,
+    "job_id": "m4-source-proof-20260923234637-b465c5d2",
+    "method": "submit_job",
+    "protocol_status": "FINALIZED",
+    "sender": "0x3211d1419709682b81c53CC51cb63622E25488d3",
+    "transaction": "0x45943fce5c710c091f6c93c9c18549d548fea12a48a2b613fe66a05125bd2d36"
+  },
+  "transactions_broadcast": false,
+  "transient_read_retry_counts": {
+    "adapter_first_apply": 0,
+    "adapter_repeat_apply": 0,
+    "contract_schema": 0,
+    "deployment_transaction": 0,
+    "latest_final_decision": 0,
+    "receipt_generation": 0,
+    "registration_transaction": 0,
+    "submission_snapshot": 0,
+    "submission_transaction": 0
+  }
+}
